@@ -164,13 +164,13 @@ a{color:var(--blue)}
 // Isi API_URL dengan alamat Web App Google Apps Script (lihat PANDUAN-PASANG.md).
 // Jika kosong, aplikasi berjalan dalam MODE DEMO (data tersimpan di browser ini saja).
 const CONFIG = {
-  API_URL: "",
+  API_URL: "https://script.google.com/macros/s/AKfycbzGi03t-NM4uJPNTLSwFnDuCqQeaTxkZUU-cjuLf3grvxnwTcw-BdSmI58d6cjYTCstFA/exec",
   // Daftar siswa diambil dari sheet "data" di Google Sheet. Di mode demo dipakai daftar contoh ini.
   DEMO_ROSTER: {
     "XI TKJ 1":[[1,"Ayu"],[2,"Bima"],[3,"Citra"],[4,"Dimas"],[9,"Indah"]].map(a=>({absen:a[0],nama:a[1]+" (contoh)"})),
     "XI TKJ 2":[[5,"Eka"],[6,"Fajar"],[7,"Gita"],[8,"Hadi"],[10,"Joko"]].map(a=>({absen:a[0],nama:a[1]+" (contoh)"}))
   },
-  DEMO_PIN: "guru123",
+  DEMO_PIN: "diyah1029",
   INAKTIF_HARI: 7
 };
 // =========================
