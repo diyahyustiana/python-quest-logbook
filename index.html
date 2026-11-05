@@ -1,476 +1,200 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Python Quest Logbook</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#0f141b;--panel:#171e28;--line:#2a3544;--tx:#e6ebf2;--mute:#8d9bb0;--blue:#4b8bbe;--yel:#ffd43b;--ok:#5fd08a;--bad:#ff7a6b;--r:6px}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.55 'Source Sans 3',system-ui,sans-serif}
-h1,h2,h3,.mono,label,button,th{font-family:'JetBrains Mono',ui-monospace,Consolas,monospace}
-header{padding:20px 16px 0;max-width:1100px;margin:auto}
-h1{font-size:1.5rem;margin:0;font-weight:800}h1 span{color:var(--yel)}
-.sub{color:var(--mute);margin:4px 0 16px}
-nav{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
-nav button{background:none;border:0;color:var(--mute);padding:10px 14px;cursor:pointer;font-size:.9rem;border-bottom:3px solid transparent}
-nav button[aria-selected=true]{color:var(--yel);border-color:var(--yel)}
-main{max-width:1100px;margin:auto;padding:20px 16px 60px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:16px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
-label{display:block;font-size:.8rem;color:var(--mute);margin:12px 0 4px}
-label small{font-family:'Source Sans 3',sans-serif;color:var(--mute)}
-input,select,textarea{width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:var(--r);padding:9px 10px;font:inherit}
-textarea{min-height:84px;resize:vertical}
-input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
-.btn{background:var(--yel);color:#1a1a1a;border:0;border-radius:var(--r);padding:10px 18px;font-weight:600;cursor:pointer;margin-top:16px}
-.btn.alt{background:none;color:var(--tx);border:1px solid var(--line)}
-.msg{margin-top:12px;font-size:.9rem}.ok{color:var(--ok)}.bad{color:var(--bad)}
-.hint{border-left:3px solid var(--blue);padding:6px 12px;color:var(--mute);font-size:.9rem;margin:10px 0}
-.flow{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--blue)}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
-.card b{display:block;font:800 1.7rem 'JetBrains Mono',monospace;color:var(--yel)}
-.card span{color:var(--mute);font-size:.85rem}
-table{width:100%;border-collapse:collapse;font-size:.88rem}
-th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
-th{color:var(--mute);font-size:.75rem;font-weight:600}
-.tw{overflow-x:auto}
-.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:.75rem;border:1px solid var(--line);margin:1px 2px 1px 0}
-.tag.w{border-color:var(--bad);color:var(--bad)}.tag.g{border-color:var(--ok);color:var(--ok)}
-.bar{height:8px;background:var(--bg);border-radius:4px;min-width:70px;overflow:hidden}.bar i{display:block;height:100%;background:var(--blue)}
-.entry{border-top:1px solid var(--line);padding:12px 0}.entry:first-child{border:0}
-.entry h3{margin:0 0 4px;font-size:.9rem}.entry p{margin:2px 0;font-size:.92rem}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.row>*{flex:1;min-width:140px}
-a{color:var(--blue)}
-[hidden]{display:none!important}
-.ph{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}.ph h3{margin:0}
-.btn.sm{margin:0;padding:6px 12px;font-size:.8rem}
-.dual{display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,1.6fr);gap:16px;align-items:start;margin-bottom:16px}
-.dual .panel{margin-bottom:0}.scroll{max-height:75vh;overflow:auto}
-@media(max-width:800px){.dual{grid-template-columns:1fr}.scroll{max-height:none}}
-#print-area{display:none}
-@media print{
-  body{background:#fff}
-  body>*:not(#print-area){display:none!important}
-  #print-area{display:block;color:#000;font:11pt/1.5 'Source Sans 3',Arial,sans-serif}
-  #print-area h2{font:800 15pt 'JetBrains Mono',monospace;margin:0 0 10px;border-bottom:2px solid #000;padding-bottom:6px}
-  #print-area table{width:100%;border-collapse:collapse;margin-bottom:12px}
-  #print-area .idt td{border:0;padding:2px 8px 2px 0;width:auto}#print-area .idt td:first-child{width:90px;font-weight:600}
-  #print-area .isi th,#print-area .isi td{border:1px solid #888;padding:6px 8px;color:#000;font-size:10.5pt}
-  #print-area .isi th{width:32%;background:#eee;font-family:inherit;font-weight:600}
-  #print-area .isi td{white-space:pre-wrap;word-break:break-word}
-  #print-area .ft{font-size:9pt;color:#444}
-  #print-area .rek th,#print-area .rek td{border:1px solid #888;padding:4px 6px;font-size:9pt;color:#000;text-align:left}
-  #print-area .rek th{background:#eee;font-family:inherit;font-weight:600}
-  #print-area .rek{page-break-inside:auto}#print-area .rek tr{page-break-inside:avoid}
-}
-@media(prefers-reduced-motion:no-preference){.panel{transition:border-color .2s}.panel:focus-within{border-color:var(--blue)}}
-</style>
-</head>
-<body>
-<header>
-  <h1>Python Quest <span>Logbook</span></h1>
-  <p class="sub">Catat proses proyekmu, bukan hanya hasilnya. Setiap sesi satu catatan.</p>
-  <nav role="tablist" id="tabs">
-    <button role="tab" data-t="log" aria-selected="true">Log Sesi</button>
-    <button role="tab" data-t="ai" aria-selected="false">AI Checkpoint</button>
-    <button role="tab" data-t="mine" aria-selected="false">Riwayatku</button>
-    <button role="tab" data-t="dash" aria-selected="false">Dashboard Guru</button>
-  </nav>
-</header>
-<main>
+// Python Quest Logbook - backend Google Apps Script (versi 3)
+// Tempel di Apps Script yang terhubung ke Google Sheet kelas.
+//
+// SETELAH MENEMPEL KODE INI (wajib, sekali saja):
+//   1. Isi GURU_EMAIL di bawah dengan email guru.
+//   2. Di editor pilih fungsi "setup" lalu klik Jalankan. Setujui semua izin yang diminta.
+//      Email uji akan terkirim ke GURU_EMAIL.
+//   3. Deploy > Kelola deployment > ikon pensil > Versi: "Versi baru" > Deploy.
 
-<section class="panel" id="who">
-  <div class="row">
-    <div><label for="kelas">Kelas</label><select id="kelas"></select></div>
-    <div style="flex:3"><label for="siswa">Nama lengkap <small id="jml"></small></label><select id="siswa"><option value="">Memuat daftar siswa...</option></select></div>
-  </div>
-  <p class="msg mono" id="mode" style="font-size:.75rem;color:var(--mute)"></p>
-  <button type="button" class="btn alt sm" id="b-retry" hidden>Coba muat daftar lagi</button>
-</section>
+const PIN_AWAL = 'diyah1981';        // dipakai sampai PIN diganti lewat "Lupa PIN?"
+const GURU_EMAIL = 'diyah.smkn1kediri@gmail.com';   // email penerima kode reset PIN (periksa: ganti jika bukan email yang dipakai)
 
-<!-- LOG SESI -->
-<section id="p-log">
-  <form class="panel" id="f-log">
-    <p class="flow">Think → Code → Test → Debug → Commit</p>
-    <div class="grid">
-      <div><label for="l-tgl">Tanggal</label><input id="l-tgl" type="date" required></div>
-      <div><label for="l-pert">Pertemuan ke-</label><input id="l-pert" type="number" min="1" required></div>
-      <div><label for="l-tahap">Tahap proyek</label>
-        <select id="l-tahap"><option>Memahami masalah</option><option>Merancang logika/algoritma</option><option>Menulis kode</option><option>Testing &amp; debugging</option><option>Dokumentasi GitHub</option><option>Finalisasi &amp; presentasi</option></select></div>
-    </div>
-    <label for="l-target">Target sesi ini</label><textarea id="l-target" required placeholder="Contoh: fungsi hitung_diskon berjalan untuk 3 kasus uji"></textarea>
-    <label for="l-kerja">Yang benar-benar kukerjakan</label><textarea id="l-kerja" required></textarea>
-    <label for="l-commit">Link commit/repository GitHub <small>(wajib, salin dari GitHub)</small></label>
-    <input id="l-commit" type="url" required placeholder="https://github.com/...">
-    <div class="grid">
-      <div><label for="l-err">Error yang kutemui <small>(tulis pesan errornya)</small></label><textarea id="l-err"></textarea></div>
-      <div><label for="l-sol">Cara aku menelusuri &amp; memperbaikinya</label><textarea id="l-sol"></textarea></div>
-    </div>
-    <div class="grid">
-      <div><label for="l-prog">Progres proyek: <b id="l-pv">0</b>%</label><input id="l-prog" type="range" min="0" max="100" step="5" value="0"></div>
-      <div><label for="l-stat">Status sesi</label><select id="l-stat"><option>Sesuai target</option><option>Terhambat</option><option>Selesai</option></select></div>
-    </div>
-    <label for="l-kend">Kendala yang masih ada</label><textarea id="l-kend"></textarea>
-    <label for="l-ren">Rencana sesi berikutnya</label><textarea id="l-ren"></textarea>
-    <button class="btn" type="submit">Simpan log sesi</button>
-    <p class="msg" id="m-log" role="status"></p>
-  </form>
-</section>
-
-<!-- AI CHECKPOINT -->
-<section id="p-ai" hidden>
-  <form class="panel" id="f-ai">
-    <div class="hint">Isi checkpoint ini setiap kali memakai AI. AI membantu kamu berpikir; AI tidak mengerjakan tugasmu. Urutannya: coba dulu, baru tanya.</div>
-    <label for="a-tgl">Tanggal</label><input id="a-tgl" type="date" required>
-    <label for="a-masalah">Masalah yang sedang kuhadapi</label><textarea id="a-masalah" required></textarea>
-    <label for="a-upaya">Upaya yang sudah kulakukan sebelum bertanya ke AI <small>(minimal 30 karakter)</small></label><textarea id="a-upaya" required minlength="30"></textarea>
-    <label for="a-prompt">Pertanyaan (prompt) yang kuberikan ke AI</label><textarea id="a-prompt" required></textarea>
-    <label for="a-saran">Ringkasan jawaban AI menurut bahasaku</label><textarea id="a-saran" required></textarea>
-    <div class="grid">
-      <div><label for="a-uji">Hasil pengujian saran AI</label><select id="a-uji"><option>Sudah diuji, berhasil</option><option>Sudah diuji, belum berhasil</option><option>Belum diuji</option></select></div>
-      <div><label for="a-porsi">Seberapa banyak kode AI yang kupakai</label><select id="a-porsi"><option>Hanya petunjuk/penjelasan</option><option>Sebagian, sudah kuubah</option><option>Sebagian besar kusalin</option></select></div>
-    </div>
-    <label for="a-jelas">Aku bisa menjelaskan ulang kode/solusinya begini</label><textarea id="a-jelas" required></textarea>
-    <label for="a-ref">Yang kupelajari dari proses ini</label><textarea id="a-ref"></textarea>
-    <button class="btn" type="submit">Simpan AI checkpoint</button>
-    <p class="msg" id="m-ai" role="status"></p>
-  </form>
-</section>
-
-<!-- RIWAYAT -->
-<section id="p-mine" hidden>
-  <div class="panel"><button class="btn alt" id="b-mine" style="margin:0">Muat ulang riwayat</button><div id="mine-out"></div></div>
-</section>
-
-<!-- DASHBOARD -->
-<section id="p-dash" hidden>
-  <div class="panel" id="gate">
-    <label for="pin">PIN guru</label>
-    <div class="row"><input id="pin" type="password" autocomplete="off"><button class="btn" id="b-pin" style="margin:0">Buka dashboard</button></div>
-    <p class="msg" id="m-pin" role="status"></p>
-    <p style="margin:10px 0 0"><a href="#" id="a-lupa">Lupa PIN?</a> &nbsp;·&nbsp; <a href="#" id="a-cek">Cek koneksi server</a></p>
-    <div id="cek" class="hint" hidden></div>
-    <div id="reset" hidden>
-      <div class="hint">Kode reset dikirim ke email guru (pemilik Google Sheet) dan berlaku 15 menit. PIN lama tetap berlaku sampai PIN baru disimpan.</div>
-      <button class="btn alt" id="b-kirim" style="margin:0">Kirim kode ke email</button>
-      <div id="reset2" hidden>
-        <label for="r-kode">Kode dari email</label><input id="r-kode" autocomplete="off" style="text-transform:uppercase">
-        <label for="r-pin1">PIN baru <small>(minimal 6 karakter)</small></label><input id="r-pin1" type="password" autocomplete="new-password">
-        <label for="r-pin2">Ulangi PIN baru</label><input id="r-pin2" type="password" autocomplete="new-password">
-        <button class="btn" id="b-simpan">Simpan PIN baru</button>
-      </div>
-      <p class="msg" id="m-reset" role="status"></p>
-    </div>
-  </div>
-  <div id="dash" hidden>
-    <div class="row" style="margin-bottom:14px">
-      <div><label for="d-kelas">Kelas</label><select id="d-kelas"></select></div>
-      <div><button class="btn alt" id="b-ref" style="margin:0">Muat ulang</button></div>
-      <div id="demo-box" hidden><button class="btn alt" id="b-demo" style="margin:0">Isi data contoh</button></div>
-    </div>
-    <div class="cards" id="cards"></div>
-    <div class="panel tw">
-      <div class="ph"><h3>Rekap per siswa</h3><button class="btn alt sm" id="b-p-rekap">Cetak PDF</button></div>
-      <table id="tbl"></table>
-    </div>
-    <div class="dual">
-      <div class="panel scroll">
-        <div class="ph"><h3>Belum mengisi (<span id="n-belum">0</span>)</h3><button class="btn alt sm" id="b-p-belum">Cetak PDF</button></div>
-        <div id="belum"></div>
-      </div>
-      <div class="panel scroll" id="detail"></div>
-    </div>
-  </div>
-</section>
-</main>
-
-<div id="print-area"></div>
-<script>
-// ====== KONFIGURASI ======
-// Isi API_URL dengan alamat Web App Google Apps Script (lihat PANDUAN-PASANG.md).
-// Jika kosong, aplikasi berjalan dalam MODE DEMO (data tersimpan di browser ini saja).
-const CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbxLeVEsk5bwYo7xNZ95mc6nXL0cxDRwH6S-WF4q3CvNnud_GyekePTHY7wtbu8mXoX4mg/exec",
-  // Daftar siswa diambil dari sheet "data" di Google Sheet. Di mode demo dipakai daftar contoh ini.
-  DEMO_ROSTER: {
-    "XI TKJ 1":[[1,"Ayu"],[2,"Bima"],[3,"Citra"],[4,"Dimas"],[9,"Indah"]].map(a=>({absen:a[0],nama:a[1]+" (contoh)"})),
-    "XI TKJ 2":[[5,"Eka"],[6,"Fajar"],[7,"Gita"],[8,"Hadi"],[10,"Joko"]].map(a=>({absen:a[0],nama:a[1]+" (contoh)"}))
-  },
-  DEMO_PIN: "diyah1981",
-  INAKTIF_HARI: 7
+const FIELDS = {
+  log: ['ts','kelas','absen','nama','tanggal','pertemuan','tahap','target','dikerjakan','commit','error','solusi','progres','status','kendala','rencana'],
+  ai:  ['ts','kelas','absen','nama','tanggal','masalah','upaya','prompt','saran','diuji','porsi','penjelasan','refleksi']
 };
-// =========================
+const SHEET_NAME = { log: 'LogSesi', ai: 'AICheckpoint' };
+const RESET_JEDA_MS = 2 * 60 * 1000;
+const RESET_BERLAKU_MS = 15 * 60 * 1000;
 
-const $ = s => document.querySelector(s);
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const DEMO = !CONFIG.API_URL;
-const LS = {get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}}, set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+// ---------- utilitas ----------
+const props = () => PropertiesService.getScriptProperties();
+const out = o => ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+const safe = v => (typeof v === 'string' && /^[=+\-@]/.test(v)) ? "'" + v : v;   // cegah rumus
+const norm = s => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
+const hash = s => Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, 'pqlog:' + s));
+const maskEmail = e => { const p = String(e).split('@'); return p[0].slice(0, 2) + '***@' + (p[1] || ''); };
 
-// ---- lapisan data (Apps Script atau demo) ----
-// Panggilan ke server dengan batas waktu, percobaan ulang otomatis, dan pesan galat yang jelas.
-const netMsg = e => e && e.message==="HTML"
-  ? "Server membalas dengan halaman galat (izin skrip belum diberikan atau deployment belum diperbarui). Hubungi guru."
-  : "Tidak dapat terhubung ke server. Periksa internet lalu coba lagi.";
-async function call(url, opts={}, tries=3){
-  let last;
-  for(let i=0;i<tries;i++){
-    const ctl=new AbortController(), t=setTimeout(()=>ctl.abort(),30000);
-    try{
-      const r = await fetch(url,{...opts,signal:ctl.signal,cache:"no-store"}); clearTimeout(t);
-      const txt = await r.text();
-      try{ return JSON.parse(txt); }catch(e){ throw new Error("HTML"); }
-    }catch(e){ clearTimeout(t); last=e; if(i<tries-1) await new Promise(r=>setTimeout(r,900*(i+1))); }
+function emailGuru() {
+  let e = String(GURU_EMAIL || '').trim();
+  if (!e) { try { e = Session.getEffectiveUser().getEmail(); } catch (x) {} }
+  return e;
+}
+function checkPin(pin) {
+  const p = String(pin || '').trim(), h = props().getProperty('PIN_HASH');
+  return h ? hash(p) === h : p === String(PIN_AWAL).trim();
+}
+function sheetFor(type) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SHEET_NAME[type]);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_NAME[type]);
+    sh.getRange(1, 1, sh.getMaxRows(), FIELDS[type].length).setNumberFormat('@');   // teks biasa: tanggal/angka tidak diubah otomatis oleh Sheets
+    sh.appendRow(FIELDS[type]); sh.setFrozenRows(1);
   }
-  throw new Error(netMsg(last));
+  return sh;
 }
-const post = body => call(CONFIG.API_URL,{method:"POST",body:JSON.stringify(body)});
-const uid = ()=> (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2));
-const api = {
-  async submit(type, row){
-    row.ts = new Date().toISOString(); row.id = row.id || uid();
-    if(DEMO){ const db=LS.get("pq_db",{log:[],ai:[]}); db[type].push(row); LS.set("pq_db",db); return {ok:true}; }
-    return post({type,row});
-  },
-  async roster(){
-    if(DEMO) return {ok:true,roster:CONFIG.DEMO_ROSTER};
-    return call(CONFIG.API_URL+"?action=roster");
-  },
-  async mine(kelas, absen, nama){
-    if(DEMO){ const db=LS.get("pq_db",{log:[],ai:[]}); const f=x=>x.kelas===kelas&&String(x.absen)===String(absen)&&String(x.nama).trim().toLowerCase()===String(nama).trim().toLowerCase(); return {ok:true,log:db.log.filter(f),ai:db.ai.filter(f)}; }
-    return call(CONFIG.API_URL+"?action=mine&kelas="+encodeURIComponent(kelas)+"&absen="+encodeURIComponent(absen)+"&nama="+encodeURIComponent(nama));
-  },
-  async resetRequest(){
-    if(DEMO) return {ok:true,email:"(mode demo, tidak ada email)",demoCode:"DEMO1234"};
-    return call(CONFIG.API_URL,{method:"POST",body:JSON.stringify({action:"resetRequest"})},1);
-  },
-  async resetConfirm(code,pin){
-    if(DEMO){ if(code.trim().toUpperCase()!=="DEMO1234") return {ok:false,error:"Kode salah."}; if(pin.length<6) return {ok:false,error:"PIN baru minimal 6 karakter."}; LS.set("pq_demopin",pin); return {ok:true}; }
-    return call(CONFIG.API_URL,{method:"POST",body:JSON.stringify({action:"resetConfirm",code,pin})},1);
-  },
-  async all(pin){
-    if(DEMO){ if(pin!==LS.get("pq_demopin",CONFIG.DEMO_PIN)) return {ok:false,error:"PIN salah."}; const db=LS.get("pq_db",{log:[],ai:[]}); return {ok:true,...db}; }
-    return post({action:"all",pin});
-  },
-  async ping(){
-    if(DEMO) return {ok:true,demo:true};
-    return call(CONFIG.API_URL+"?action=ping",{},2);
-  }
-};
-
-// ---- init ----
-let ROSTER = {};
-const me = LS.get("pq_me",{});
-const key = (k,a,n)=>k+"|"+Number(a)+"|"+String(n).trim().toLowerCase();
-function isiSiswa(pilihNama){
-  const L = ROSTER[$("#kelas").value]||[];
-  $("#siswa").innerHTML = `<option value="">- pilih namamu (${L.length} siswa) -</option>` + L.map((x,i)=>`<option value="${i}">${esc(x.absen)}. ${esc(x.nama)}</option>`).join("");
-  const i = L.findIndex(x=>x.nama===pilihNama);
-  $("#siswa").value = i>=0 ? String(i) : "";
-  $("#jml").textContent = "· "+L.length+" siswa di kelas ini";
-}
-function simpanMe(){ const x=((ROSTER[$("#kelas").value]||[])[$("#siswa").value])||{}; LS.set("pq_me",{kelas:$("#kelas").value,nama:x.nama||""}); }
-$("#kelas").onchange = ()=>{ isiSiswa(); simpanMe(); resetMine(); };
-$("#siswa").onchange = ()=>{ simpanMe(); resetMine(); };
-async function init(){
-  $("#b-retry").hidden=true;
-  let r=null, gagal=false;
-  try{ r=await api.roster(); if(!(r.ok&&r.roster&&Object.keys(r.roster).length)) r=null; }catch(e){ gagal=true; r=null; }
-  if(r) LS.set("pq_roster",r.roster);
-  ROSTER = r ? r.roster : LS.get("pq_roster",{});
-  const KL=Object.keys(ROSTER);
-  if(!KL.length){
-    $("#siswa").innerHTML=`<option value="">Daftar siswa belum termuat</option>`;
-    $("#mode").textContent = gagal ? "Daftar siswa belum bisa dimuat karena server tidak terjangkau. Periksa internet lalu coba lagi." : "Daftar siswa tidak ditemukan. Minta guru memeriksa sheet \"data\" (kolom Kelas, No Absen, Nama).";
-    $("#mode").className="msg mono bad"; $("#b-retry").hidden=false; return;
-  }
-  if(!r && gagal){ $("#mode").textContent="Server sedang sulit dijangkau; memakai daftar siswa yang tersimpan di perangkat ini."; $("#mode").className="msg mono"; $("#b-retry").hidden=false; }
-  $("#kelas").innerHTML = KL.map(k=>`<option>${esc(k)}</option>`).join("");
-  $("#d-kelas").innerHTML = `<option value="">Semua kelas</option>` + KL.map(k=>`<option>${esc(k)}</option>`).join("");
-  if(me.kelas&&ROSTER[me.kelas]) $("#kelas").value=me.kelas;
-  isiSiswa(me.nama);
-}
-const today = new Date().toISOString().slice(0,10); $("#l-tgl").value=today; $("#a-tgl").value=today;
-$("#mode").textContent = DEMO ? "MODE DEMO: data hanya tersimpan di browser ini. Hubungkan ke Google Sheet agar data terkumpul untuk guru." : "Terhubung ke Google Sheet kelas.";
-$("#l-prog").oninput = e => $("#l-pv").textContent = e.target.value;
-
-function ident(){
-  const kelas=$("#kelas").value, x=(ROSTER[kelas]||[])[$("#siswa").value];
-  return ($("#siswa").value!==""&&x) ? {kelas,absen:x.absen,nama:x.nama} : null;
-}
-
-// ---- tab ----
-document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{
-  document.querySelectorAll("#tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
-  ["log","ai","mine","dash"].forEach(t=>$("#p-"+t).hidden = t!==b.dataset.t);
-  $("#who").hidden = b.dataset.t==="dash";
-  if(b.dataset.t==="mine") resetMine();
-});
-
-// ---- kirim form ----
-const PENDING={};
-async function kirim(type, formId, msgId, build){
-  $(formId).addEventListener("submit", async e=>{
-    e.preventDefault();
-    const m=$(msgId), id=ident();
-    if(!id){ m.className="msg bad"; m.textContent="Pilih kelas dan namamu di bagian atas dulu."; return; }
-    const btn=e.submitter; btn.disabled=true; m.className="msg"; m.textContent="Menyimpan...";
-    try{
-      const sid = PENDING[formId] || (PENDING[formId]=uid());   // id sama dipakai saat kirim ulang agar tidak ganda
-      const res = await api.submit(type,{...id,...build(),id:sid});
-      if(res.ok){ delete PENDING[formId]; m.className="msg ok"; m.textContent="Tersimpan. Kerja bagus, lanjutkan di sesi berikutnya."; e.target.reset(); $("#l-tgl").value=today; $("#a-tgl").value=today; $("#l-pv").textContent="0"; }
-      else throw new Error(res.error||"gagal");
-    }catch(err){ m.className="msg bad"; m.textContent="Belum tersimpan. "+err.message+" Isianmu masih ada; tekan simpan lagi (tidak akan tercatat dua kali)."; }
-    btn.disabled=false;
+function readAll(type) {
+  const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+  const v = sheetFor(type).getDataRange().getValues();
+  const h = v.shift().map(x => String(x).trim());
+  return v.filter(row => row.some(c => c !== '')).map(row => {
+    const o = {};
+    h.forEach((k, i) => {
+      if (!k) return;
+      let c = row[i];
+      if (c instanceof Date) c = (k === 'ts') ? c.toISOString() : Utilities.formatDate(c, tz, 'yyyy-MM-dd');
+      o[k] = (c === null || c === undefined) ? '' : c;
+    });
+    return o;
   });
 }
-const v = id => $(id).value.trim();
-kirim("log","#f-log","#m-log",()=>({tanggal:v("#l-tgl"),pertemuan:v("#l-pert"),tahap:v("#l-tahap"),target:v("#l-target"),dikerjakan:v("#l-kerja"),commit:v("#l-commit"),error:v("#l-err"),solusi:v("#l-sol"),progres:Number(v("#l-prog")),status:v("#l-stat"),kendala:v("#l-kend"),rencana:v("#l-ren")}));
-kirim("ai","#f-ai","#m-ai",()=>({tanggal:v("#a-tgl"),masalah:v("#a-masalah"),upaya:v("#a-upaya"),prompt:v("#a-prompt"),saran:v("#a-saran"),diuji:v("#a-uji"),porsi:v("#a-porsi"),penjelasan:v("#a-jelas"),refleksi:v("#a-ref")}));
 
-// ---- riwayat siswa ----
-const link = u => /^https?:\/\//.test(u) ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a>` : esc(u);
-const btnCetak = (t,i)=> typeof t==="string" ? `<p class="noprint"><button class="btn alt" style="margin:6px 0 0;padding:6px 12px" data-print="${t}" data-i="${i}">Cetak PDF</button></p>` : "";
-function renderLog(x,t,i){ return `<div class="entry"><h3>${esc(x.tanggal)} · Pertemuan ${esc(x.pertemuan)} · ${esc(x.tahap)}</h3>
-<p><b>Target:</b> ${esc(x.target)}</p><p><b>Dikerjakan:</b> ${esc(x.dikerjakan)}</p>${x.error?`<p><b>Error:</b> ${esc(x.error)} → ${esc(x.solusi)}</p>`:""}
-<p>${link(x.commit)}</p><p><span class="tag">${esc(x.progres)}%</span><span class="tag">${esc(x.status)}</span></p>${btnCetak(t,i)}</div>`; }
-function renderAi(x,t,i){ return `<div class="entry"><h3>${esc(x.tanggal)} · AI Checkpoint</h3><p><b>Masalah:</b> ${esc(x.masalah)}</p><p><b>Upaya awal:</b> ${esc(x.upaya)}</p>
-<p><b>Penjelasanku:</b> ${esc(x.penjelasan)}</p><p><span class="tag ${x.diuji==="Belum diuji"?"w":"g"}">${esc(x.diuji)}</span><span class="tag ${x.porsi.startsWith("Sebagian besar")?"w":""}">${esc(x.porsi)}</span></p>${btnCetak(t,i)}</div>`; }
-let MINE={log:[],ai:[]};
-function resetMine(){ MINE={log:[],ai:[]}; $("#mine-out").innerHTML=""; }
-async function muatMine(){
-  const id=ident(), out=$("#mine-out");
-  if(!id){ out.innerHTML=`<p class="msg bad">Pilih kelas dan namamu di bagian atas dulu.</p>`; return; }
-  out.innerHTML="<p class='msg'>Memuat...</p>";
-  try{ const r=await api.mine(id.kelas,id.absen,id.nama);
-    const L=[...(r.log||[])].sort((a,b)=>b.ts.localeCompare(a.ts)), A=[...(r.ai||[])].sort((a,b)=>b.ts.localeCompare(a.ts));
-    MINE={log:L,ai:A};
-    out.innerHTML = `<h3>Riwayat ${esc(id.nama)} (${esc(id.kelas)}, no. ${esc(id.absen)})</h3><h3>Log sesi (${L.length})</h3>${L.map((x,i)=>renderLog(x,"log",i)).join("")||"<p class='msg'>Belum ada log sesi.</p>"}<h3>AI checkpoint (${A.length})</h3>${A.map((x,i)=>renderAi(x,"ai",i)).join("")||"<p class='msg'>Belum ada checkpoint.</p>"}`;
-  }catch(e){ out.innerHTML="<p class='msg bad'>Gagal memuat. Coba lagi.</p>"; }
+// ---------- daftar siswa (sheet "data": Kelas, No Absen, Nama) ----------
+function getRoster() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheets().find(x => x.getName().toLowerCase().trim() === 'data');
+  if (!sh) return {};
+  const v = sh.getDataRange().getDisplayValues();
+  let hr = -1, ik = -1, ia = -1, inm = -1;
+  for (let i = 0; i < Math.min(v.length, 15); i++) {
+    const h = v[i].map(x => String(x).toLowerCase().trim());
+    const k = h.findIndex(x => x.includes('kelas')), n = h.findIndex(x => x.includes('nama'));
+    if (k >= 0 && n >= 0) {
+      hr = i; ik = k; inm = n;
+      ia = h.findIndex(x => x.includes('absen') || x === 'no' || x === 'no.' || x.includes('nomor') || x.includes('urut'));
+      break;
+    }
+  }
+  if (hr < 0) return {};
+  const res = {}; let kelas = '';
+  v.slice(hr + 1).forEach(r => {
+    const k = String(r[ik]).trim(); if (k) kelas = k;
+    const n = String(r[inm]).trim().replace(/\s+/g, ' ');
+    if (!kelas || !n) return;
+    (res[kelas] = res[kelas] || []).push({ absen: ia >= 0 ? r[ia] : '', nama: n });
+  });
+  Object.keys(res).forEach(k => {
+    res[k].forEach((x, i) => { const a = parseInt(String(x.absen).replace(/\D/g, ''), 10); x.absen = isNaN(a) ? i + 1 : a; });
+    res[k].sort((a, b) => a.absen - b.absen);
+  });
+  return res;
 }
-$("#b-mine").onclick = muatMine;
 
-// ---- cetak PDF (lewat dialog cetak browser, pilih "Simpan sebagai PDF") ----
-const FIELD = {
-  log:[["tanggal","Tanggal"],["pertemuan","Pertemuan ke-"],["tahap","Tahap proyek"],["target","Target sesi"],["dikerjakan","Yang dikerjakan"],["commit","Link commit/repository GitHub"],["error","Error yang ditemui"],["solusi","Cara menelusuri & memperbaiki"],["progres","Progres proyek (%)"],["status","Status sesi"],["kendala","Kendala yang masih ada"],["rencana","Rencana sesi berikutnya"]],
-  ai:[["tanggal","Tanggal"],["masalah","Masalah yang dihadapi"],["upaya","Upaya sebelum bertanya ke AI"],["prompt","Pertanyaan (prompt) ke AI"],["saran","Ringkasan jawaban AI"],["diuji","Hasil pengujian saran AI"],["porsi","Porsi kode AI yang dipakai"],["penjelasan","Penjelasan ulang dengan kata sendiri"],["refleksi","Yang dipelajari"]]
-};
-function cetak(t,i){
-  const x=MINE[t][i], id=ident(); if(!x||!id) return;
-  const judul = t==="log" ? "Log Sesi" : "AI Checkpoint";
-  $("#print-area").innerHTML = `<h2>Python Quest Logbook - ${judul}</h2>
-    <table class="idt"><tr><td>Nama</td><td>${esc(id.nama)}</td></tr><tr><td>Kelas</td><td>${esc(id.kelas)}</td></tr><tr><td>No. absen</td><td>${esc(id.absen)}</td></tr></table>
-    <table class="isi">${FIELD[t].map(f=>`<tr><th>${esc(f[1])}</th><td>${esc(x[f[0]]||"-")}</td></tr>`).join("")}</table>
-    <p class="ft">Dicatat: ${esc(String(x.ts).replace("T"," ").slice(0,16))} · Dicetak: ${esc(new Date().toLocaleString("id-ID"))}</p>`;
-  const lama=document.title; document.title=`Logbook ${judul} - ${id.nama} - ${x.tanggal}`;
-  window.addEventListener("afterprint",()=>{document.title=lama;$("#print-area").innerHTML="";},{once:true});
-  window.print();
+// ---------- reset PIN ----------
+function mailError(err) {
+  return /izin|permission|authori|send_mail|scope/i.test(String(err))
+    ? 'Izin kirim email belum diberikan. Guru: di editor Apps Script jalankan fungsi "setup", setujui izinnya, lalu deploy versi baru.'
+    : 'Email gagal dikirim: ' + String(err).slice(0, 140);
 }
-$("#mine-out").addEventListener("click",e=>{ const b=e.target.closest("[data-print]"); if(b) cetak(b.dataset.print,Number(b.dataset.i)); });
+function resetRequest() {
+  const to = emailGuru();
+  if (!to) return { ok: false, error: 'Email guru belum diketahui. Isi GURU_EMAIL di Code.gs, lalu deploy versi baru.' };
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const P = props(), now = Date.now(), last = Number(P.getProperty('RESET_LAST') || 0);
+    if (now - last < RESET_JEDA_MS)
+      return { ok: false, error: 'Kode baru saja dikirim. Periksa kotak masuk dan folder spam, atau tunggu ' + Math.ceil((RESET_JEDA_MS - (now - last)) / 1000) + ' detik untuk meminta lagi.' };
+    const code = Utilities.getUuid().replace(/-/g, '').slice(0, 8).toUpperCase();
+    try {   // kirim email DULU; jika gagal, tidak ada yang disimpan dan tidak ada jeda
+      MailApp.sendEmail({
+        to: to,
+        subject: 'Kode reset PIN Dashboard Python Quest Logbook',
+        body: 'Kode reset PIN Dashboard Guru Anda: ' + code + '\n\nKode berlaku 15 menit dan hanya bisa dipakai sekali.\n' +
+              'Masukkan kode ini di Dashboard Guru > Lupa PIN, lalu buat PIN baru.\n\n' +
+              'Jika Anda tidak merasa meminta reset, abaikan email ini. PIN lama Anda tetap berlaku.'
+      });
+    } catch (err) { return { ok: false, error: mailError(err) }; }
+    P.setProperties({ RESET_CODE: hash(code), RESET_EXP: String(now + RESET_BERLAKU_MS), RESET_TRY: '0', RESET_LAST: String(now) });
+    return { ok: true, email: maskEmail(to) };
+  } finally { lock.releaseLock(); }
+}
+function resetConfirm(code, newPin) {
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const P = props(), h = P.getProperty('RESET_CODE'), exp = Number(P.getProperty('RESET_EXP') || 0), tries = Number(P.getProperty('RESET_TRY') || 0);
+    const clear = () => ['RESET_CODE', 'RESET_EXP', 'RESET_TRY'].forEach(k => P.deleteProperty(k));
+    if (!h || Date.now() > exp) return { ok: false, error: 'Kode belum diminta atau sudah kedaluwarsa. Kirim kode baru.' };
+    if (tries >= 5) { clear(); return { ok: false, error: 'Terlalu banyak percobaan. Kirim kode baru.' }; }
+    if (hash(code) !== h) { P.setProperty('RESET_TRY', String(tries + 1)); return { ok: false, error: 'Kode salah.' }; }
+    const pin = String(newPin || '').trim();
+    if (pin.length < 6) return { ok: false, error: 'PIN baru minimal 6 karakter.' };
+    P.setProperty('PIN_HASH', hash(pin)); clear();
+    try { MailApp.sendEmail({ to: emailGuru(), subject: 'PIN Dashboard Python Quest Logbook telah diganti', body: 'PIN Dashboard Guru diganti pada ' + new Date().toLocaleString('id-ID') + '. Jika bukan Anda, segera minta reset ulang.' }); } catch (x) {}
+    return { ok: true };
+  } finally { lock.releaseLock(); }
+}
 
-// ---- dashboard guru ----
-let DATA=null;
-async function muat(pin){
-  const r = await api.all(String(pin).trim()); if(!r.ok) throw new Error(r.error||"Data tidak dapat dimuat.");
-  DATA={log:r.log||[],ai:r.ai||[]}; sessionStorage.setItem("pq_pin",pin); renderDash();
-}
-$("#b-pin").onclick = async ()=>{
-  const m=$("#m-pin"); m.className="msg"; m.textContent="Memeriksa...";
-  try{ await muat($("#pin").value.trim()); $("#gate").hidden=true; $("#dash").hidden=false; $("#demo-box").hidden=!DEMO; m.textContent=""; }
-  catch(e){ m.className="msg bad"; m.textContent=e.message; }
-};
-$("#a-cek").onclick = async e=>{
-  e.preventDefault(); const c=$("#cek"); c.hidden=false; c.textContent="Memeriksa server...";
-  try{ const r=await api.ping();
-    if(r.demo){ c.textContent="Mode demo: tidak ada server. Isi API_URL di index.html untuk terhubung ke Google Sheet."; return; }
-    if(!r.ok) throw new Error(r.error||"galat");
-    c.innerHTML = `Server terhubung (versi ${esc(r.versi)}).<br>Sheet "data": ${esc(r.siswa)} siswa di ${esc(r.kelas)} kelas${r.siswa?"":" - <b>tidak terbaca, periksa sheet data</b>"}.<br>Pengiriman email: ${r.emailOk?"izin OK":"<b>izin BELUM diberikan - jalankan fungsi setup di Apps Script lalu deploy versi baru</b>"}; penerima: ${esc(r.email||"BELUM DIISI (isi GURU_EMAIL)")}.<br>PIN: ${r.pinTersimpan?"sudah pernah diganti lewat Lupa PIN":"memakai PIN_AWAL di Code.gs"}.`;
-  }catch(err){ c.textContent = err.message; }
-};
-$("#a-lupa").onclick = e=>{ e.preventDefault(); $("#reset").hidden = !$("#reset").hidden; };
-$("#b-kirim").onclick = async ()=>{
-  const m=$("#m-reset"), b=$("#b-kirim"); b.disabled=true; m.className="msg"; m.textContent="Mengirim kode...";
-  try{ const r=await api.resetRequest(); if(!r.ok) throw new Error(r.error||"gagal");
-    m.className="msg ok"; m.textContent="Kode dikirim ke "+r.email+". Periksa kotak masuk dan folder spam."+(r.demoCode?" (Demo: kodenya "+r.demoCode+")":""); $("#reset2").hidden=false; $("#r-kode").focus();
-  }catch(e){ m.className="msg bad"; m.textContent=e.message; }
-  b.disabled=false;
-};
-$("#b-simpan").onclick = async ()=>{
-  const m=$("#m-reset"), p1=$("#r-pin1").value, p2=$("#r-pin2").value;
-  if(p1.length<6){ m.className="msg bad"; m.textContent="PIN baru minimal 6 karakter."; return; }
-  if(p1!==p2){ m.className="msg bad"; m.textContent="Pengulangan PIN tidak sama."; return; }
-  m.className="msg"; m.textContent="Menyimpan...";
-  try{ const r=await api.resetConfirm($("#r-kode").value,p1); if(!r.ok) throw new Error(r.error||"gagal");
-    m.className="msg ok"; m.textContent="PIN baru tersimpan. Silakan masuk dengan PIN baru."; $("#reset2").hidden=true; ["#r-kode","#r-pin1","#r-pin2","#pin"].forEach(i=>$(i).value="");
-  }catch(e){ m.className="msg bad"; m.textContent=e.message; }
-};
-$("#b-ref").onclick = ()=>muat(sessionStorage.getItem("pq_pin")||"").catch(e=>alert(e.message));
-$("#d-kelas").onchange = ()=>renderDash();
+// ---------- pintu masuk web ----------
+function doPost(e) {
+  try {
+    const d = JSON.parse(e.postData.contents);
+    if (d.action === 'all') {
+      if (!checkPin(d.pin)) return out({ ok: false, error: 'PIN salah.' });
+      return out({ ok: true, log: readAll('log'), ai: readAll('ai') });
+    }
+    if (d.action === 'resetRequest') return out(resetRequest());
+    if (d.action === 'resetConfirm') return out(resetConfirm(String(d.code || '').trim().toUpperCase(), String(d.pin || '')));
 
-function rekap(){
-  const kf=$("#d-kelas").value, map={};
-  const add=(x,t)=>{ if(kf&&x.kelas!==kf) return; const k=key(x.kelas,x.absen,x.nama); const s=map[k]??={kelas:x.kelas,absen:Number(x.absen),nama:x.nama,log:[],ai:[]}; s[t].push(x); s.nama=x.nama; };
-  DATA.log.forEach(x=>add(x,"log")); DATA.ai.forEach(x=>add(x,"ai"));
-  return Object.values(map).map(s=>{
-    s.log.sort((a,b)=>a.ts.localeCompare(b.ts)); s.ai.sort((a,b)=>a.ts.localeCompare(b.ts));
-    const last=s.log.at(-1), lastAny=[...s.log,...s.ai].map(x=>x.ts).sort().at(-1);
-    s.progres=last?Number(last.progres):0; s.terakhir=lastAny; s.hari=Math.floor((Date.now()-new Date(lastAny))/864e5);
-    s.flag=[]; if(s.hari>=CONFIG.INAKTIF_HARI) s.flag.push("Tidak aktif "+s.hari+" hari");
-    if(last&&last.status==="Terhambat") s.flag.push("Terhambat");
-    if(s.log.some(x=>!/^https?:\/\/(www\.)?github\.com\//.test(x.commit||""))) s.flag.push("Link bukan GitHub");
-    if(s.ai.some(x=>x.diuji==="Belum diuji")) s.flag.push("Saran AI belum diuji");
-    if(s.ai.filter(x=>x.porsi.startsWith("Sebagian besar")).length>=2) s.flag.push("Sering menyalin kode AI");
-    if(s.log.length&&!s.ai.length) s.flag.push("Belum ada AI checkpoint");
-    return s;
-  }).sort((a,b)=>a.kelas.localeCompare(b.kelas)||a.absen-b.absen);
+    if (!FIELDS[d.type]) return out({ ok: false, error: 'jenis tidak dikenal' });
+    const r = d.row || {};
+    if (!r.kelas || !r.absen || !r.nama) return out({ ok: false, error: 'identitas belum lengkap' });
+    const siswa = (getRoster()[r.kelas] || []).find(x => String(x.absen) === String(r.absen) && norm(x.nama) === norm(r.nama));
+    if (!siswa) return out({ ok: false, error: 'nama tidak cocok dengan daftar kelas' });
+
+    const lock = LockService.getScriptLock(); lock.waitLock(15000);
+    try {
+      const cache = CacheService.getScriptCache(), idKey = r.id ? 'sub_' + String(r.id).slice(0, 60) : null;
+      if (idKey && cache.get(idKey)) return out({ ok: true, dup: true });   // kiriman ulang (jaringan putus) tidak digandakan
+      sheetFor(d.type).appendRow(FIELDS[d.type].map(k => safe(r[k] ?? '')));
+      if (idKey) cache.put(idKey, '1', 21600);
+    } finally { lock.releaseLock(); }
+    return out({ ok: true });
+  } catch (err) { return out({ ok: false, error: String(err).slice(0, 160) }); }
 }
-function renderDash(){
-  const R=rekap(), kf=$("#d-kelas").value;
-  const total = Object.entries(ROSTER).filter(([k])=>!kf||k===kf).reduce((a,[,L])=>a+L.length,0);
-  const avg = R.length?Math.round(R.reduce((a,s)=>a+s.progres,0)/R.length):0;
-  const perhatian = R.filter(s=>s.flag.length).length;
-  $("#cards").innerHTML = [[R.length+"/"+total,"siswa sudah mengisi"],[avg+"%","rata-rata progres"],[R.reduce((a,s)=>a+s.log.length,0),"log sesi"],[R.reduce((a,s)=>a+s.ai.length,0),"AI checkpoint"],[perhatian,"perlu perhatian"]].map(c=>`<div class="card"><b>${esc(c[0])}</b><span>${esc(c[1])}</span></div>`).join("");
-  $("#tbl").innerHTML = `<tr><th>Kelas</th><th>No</th><th>Nama</th><th>Progres</th><th>Log</th><th>AI</th><th>Terakhir</th><th>Catatan</th></tr>` + (R.map((s,i)=>`<tr data-i="${i}" style="cursor:pointer"><td>${esc(s.kelas)}</td><td>${s.absen}</td><td>${esc(s.nama)}</td><td><div class="bar"><i style="width:${s.progres}%"></i></div>${s.progres}%</td><td>${s.log.length}</td><td>${s.ai.length}</td><td>${esc(s.terakhir.slice(0,10))}</td><td>${s.flag.map(f=>`<span class="tag w">${esc(f)}</span>`).join("")||`<span class="tag g">lancar</span>`}</td></tr>`).join("")||`<tr><td colspan="8">Belum ada data. Minta siswa mengisi log sesi pertama.</td></tr>`);
-  const sudah=new Set(R.map(s=>key(s.kelas,s.absen,s.nama))), B=[];
-  Object.entries(ROSTER).forEach(([k,L])=>{ if(kf&&k!==kf) return; L.forEach(x=>{ if(!sudah.has(key(k,x.absen,x.nama))) B.push({k,absen:x.absen,nama:x.nama}); }); });
-  LAST={R,B,kf};
-  $("#n-belum").textContent = B.length;
-  $("#belum").innerHTML = B.length ? `<p>${B.map(x=>esc(x.k+" · "+x.absen+". "+x.nama)).join("<br>")}</p>` : `<p class="msg ok">Semua siswa sudah mengisi.</p>`;
-  $("#detail").innerHTML = DETAIL_KOSONG;
-  $("#tbl").querySelectorAll("tr[data-i]").forEach(tr=>tr.onclick=()=>{ const s=R[tr.dataset.i], d=$("#detail");
-    d.innerHTML=`<h3 style="margin-top:0">${esc(s.nama)} · ${esc(s.kelas)} no. ${s.absen}</h3><h3>Log sesi</h3>${[...s.log].reverse().map(x=>renderLog(x)).join("")||"<p class='msg'>Belum ada.</p>"}<h3>AI checkpoint</h3>${[...s.ai].reverse().map(x=>renderAi(x)).join("")||"<p class='msg'>Belum ada.</p>"}`;
-    d.scrollTop=0; if(window.innerWidth<=800) d.scrollIntoView({behavior:"smooth"}); });
+
+function doGet(e) {
+  try {
+    const p = e.parameter || {};
+    if (p.action === 'roster') return out({ ok: true, roster: getRoster() });
+    if (p.action === 'mine') {
+      const mine = x => x.kelas === p.kelas && String(x.absen) === String(p.absen) && norm(x.nama) === norm(p.nama || '');
+      return out({ ok: true, log: readAll('log').filter(mine), ai: readAll('ai').filter(mine) });
+    }
+    if (p.action === 'ping') {   // pemeriksaan kesehatan untuk guru
+      let mailOk = false; try { MailApp.getRemainingDailyQuota(); mailOk = true; } catch (x) {}
+      const r = getRoster(), to = emailGuru();
+      return out({ ok: true, versi: 3, kelas: Object.keys(r).length, siswa: Object.keys(r).reduce((a, k) => a + r[k].length, 0), email: to ? maskEmail(to) : '', emailOk: mailOk, pinTersimpan: !!props().getProperty('PIN_HASH') });
+    }
+    return out({ ok: false, error: 'aksi tidak dikenal' });
+  } catch (err) { return out({ ok: false, error: String(err).slice(0, 160) }); }
 }
-let LAST={R:[],B:[],kf:""};
-const DETAIL_KOSONG = `<h3 style="margin-top:0">Rincian riwayat siswa</h3><p class="msg">Klik nama siswa pada tabel rekap untuk melihat rincian log sesi dan AI checkpoint-nya di sini.</p>`;
-function cetakHtml(judul, html){
-  $("#print-area").innerHTML = html;
-  const lama=document.title; document.title=judul;
-  window.addEventListener("afterprint",()=>{ document.title=lama; $("#print-area").innerHTML=""; },{once:true});
-  window.print();
+
+// ---------- dijalankan manual dari editor ----------
+// Jalankan SEKALI setelah menempel kode: memberi semua izin dan mengirim email uji.
+function setup() {
+  const r = getRoster(), n = Object.keys(r).reduce((a, k) => a + r[k].length, 0);
+  ['log', 'ai'].forEach(t => { const sh = sheetFor(t); sh.getRange(1, 1, sh.getMaxRows(), FIELDS[t].length).setNumberFormat('@'); });
+  const to = emailGuru();
+  if (!to) throw new Error('Isi GURU_EMAIL di bagian atas kode, simpan, lalu jalankan setup lagi.');
+  MailApp.sendEmail({ to: to, subject: 'Uji email Python Quest Logbook', body: 'Jika email ini diterima, pengiriman kode reset PIN siap dipakai.\nSiswa terbaca dari sheet "data": ' + n + ' di ' + Object.keys(r).length + ' kelas.' });
+  CacheService.getScriptCache().put('uji', '1', 10);
+  Logger.log('Siap. Siswa terbaca: ' + n + '. Email uji dikirim ke ' + to + ' (cek juga folder spam).');
 }
-const infoCetak = kf => `<p class="ft">Kelas: ${esc(kf||"Semua kelas")} · Dicetak: ${esc(new Date().toLocaleString("id-ID"))}</p>`;
-$("#b-p-rekap").onclick = ()=>{
-  const {R,kf}=LAST; if(!R.length){ alert("Belum ada data rekap untuk dicetak."); return; }
-  cetakHtml(`Rekap per siswa - ${kf||"Semua kelas"} - ${new Date().toISOString().slice(0,10)}`,
-    `<h2>Python Quest Logbook - Rekap per Siswa</h2>${infoCetak(kf)}<table class="rek"><tr><th>Kelas</th><th>No</th><th>Nama</th><th>Progres</th><th>Log</th><th>AI</th><th>Terakhir</th><th>Catatan</th></tr>${R.map(s=>`<tr><td>${esc(s.kelas)}</td><td>${s.absen}</td><td>${esc(s.nama)}</td><td>${s.progres}%</td><td>${s.log.length}</td><td>${s.ai.length}</td><td>${esc(s.terakhir.slice(0,10))}</td><td>${esc(s.flag.join("; ")||"lancar")}</td></tr>`).join("")}</table>`);
-};
-$("#b-p-belum").onclick = ()=>{
-  const {B,kf}=LAST; if(!B.length){ alert("Semua siswa sudah mengisi, tidak ada daftar untuk dicetak."); return; }
-  cetakHtml(`Belum mengisi - ${kf||"Semua kelas"} - ${new Date().toISOString().slice(0,10)}`,
-    `<h2>Python Quest Logbook - Belum Mengisi (${B.length} siswa)</h2>${infoCetak(kf)}<table class="rek"><tr><th>No</th><th>Kelas</th><th>No. absen</th><th>Nama</th></tr>${B.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.k)}</td><td>${esc(x.absen)}</td><td>${esc(x.nama)}</td></tr>`).join("")}</table>`);
-};
-$("#b-demo").onclick = async ()=>{
-  const nm=["Ayu","Bima","Citra","Dimas","Eka","Fajar","Gita","Hadi"], db={log:[],ai:[]}, d=n=>new Date(Date.now()-n*864e5).toISOString();
-  nm.forEach((n,i)=>{ const k=i<4?"XI TKJ 1":"XI TKJ 2";
-    for(let j=0;j<=(i%4)+1;j++) db.log.push({ts:d(12-j*3-(i===3?6:0)),kelas:k,absen:i+1,nama:n+" (contoh)",tanggal:d(12-j*3).slice(0,10),pertemuan:10+j,tahap:"Menulis kode",target:"Contoh target",dikerjakan:"Contoh pekerjaan",commit:i===5?"https://example.com/x":"https://github.com/contoh/proyek",error:"NameError",solusi:"Cek nama variabel",progres:Math.min(100,15+j*25+i*3),status:i===2?"Terhambat":"Sesuai target",kendala:"",rencana:""});
-    if(i%3!==0) db.ai.push({ts:d(5-(i%3)),kelas:k,absen:i+1,nama:n+" (contoh)",tanggal:d(5).slice(0,10),masalah:"Contoh masalah",upaya:"Sudah mencoba membaca error dan print variabel",prompt:"",saran:"",diuji:i===4?"Belum diuji":"Sudah diuji, berhasil",porsi:i===6?"Sebagian besar kusalin":"Hanya petunjuk/penjelasan",penjelasan:"Contoh penjelasan",refleksi:""}); });
-  LS.set("pq_db",db); await muat(sessionStorage.getItem("pq_pin"));
-};
-$("#b-retry").onclick=()=>init();
-init();
-</script>
-</body>
-</html>
+// Cadangan jika email guru tidak bisa diakses: ubah PIN_BARU, lalu jalankan fungsi ini dari editor.
+function aturPinManual() {
+  const PIN_BARU = 'ISI-PIN-BARU-DI-SINI';
+  if (PIN_BARU === 'ISI-PIN-BARU-DI-SINI' || PIN_BARU.length < 6) throw new Error('Ubah PIN_BARU di dalam fungsi ini (minimal 6 karakter), lalu jalankan lagi.');
+  props().setProperty('PIN_HASH', hash(PIN_BARU));
+  Logger.log('PIN Dashboard Guru sudah diganti.');
+}
