@@ -88,6 +88,7 @@ a{color:var(--blue)}
     <div style="flex:3"><label for="siswa">Nama lengkap <small id="jml"></small></label><select id="siswa"><option value="">Memuat daftar siswa...</option></select></div>
   </div>
   <p class="msg mono" id="mode" style="font-size:.75rem;color:var(--mute)"></p>
+  <button type="button" class="btn alt sm" id="b-retry" hidden>Coba muat daftar lagi</button>
 </section>
 
 <!-- LOG SESI -->
@@ -150,7 +151,8 @@ a{color:var(--blue)}
     <label for="pin">PIN guru</label>
     <div class="row"><input id="pin" type="password" autocomplete="off"><button class="btn" id="b-pin" style="margin:0">Buka dashboard</button></div>
     <p class="msg" id="m-pin" role="status"></p>
-    <p style="margin:10px 0 0"><a href="#" id="a-lupa">Lupa PIN?</a></p>
+    <p style="margin:10px 0 0"><a href="#" id="a-lupa">Lupa PIN?</a> &nbsp;·&nbsp; <a href="#" id="a-cek">Cek koneksi server</a></p>
+    <div id="cek" class="hint" hidden></div>
     <div id="reset" hidden>
       <div class="hint">Kode reset dikirim ke email guru (pemilik Google Sheet) dan berlaku 15 menit. PIN lama tetap berlaku sampai PIN baru disimpan.</div>
       <button class="btn alt" id="b-kirim" style="margin:0">Kirim kode ke email</button>
@@ -191,7 +193,7 @@ a{color:var(--blue)}
 // Isi API_URL dengan alamat Web App Google Apps Script (lihat PANDUAN-PASANG.md).
 // Jika kosong, aplikasi berjalan dalam MODE DEMO (data tersimpan di browser ini saja).
 const CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbzTAn5fh3uT5mxv7KvuzFXirDVfaFq76niHc0PAZ2gGIIMT8qisCXszTWkH45lp0wfeTw/exec",
+  API_URL: "https://script.google.com/macros/s/AKfycbwT-IdnxQf29Hh_80-R7MwJ_mdKMpH0jh_be4Pg6DTUZ7mXh7YoWpMLk_ktvGWs1tvb7Q/exec",
   // Daftar siswa diambil dari sheet "data" di Google Sheet. Di mode demo dipakai daftar contoh ini.
   DEMO_ROSTER: {
     "XI TKJ 1":[[1,"Ayu"],[2,"Bima"],[3,"Citra"],[4,"Dimas"],[9,"Indah"]].map(a=>({absen:a[0],nama:a[1]+" (contoh)"})),
@@ -208,34 +210,53 @@ const DEMO = !CONFIG.API_URL;
 const LS = {get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}}, set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 // ---- lapisan data (Apps Script atau demo) ----
+// Panggilan ke server dengan batas waktu, percobaan ulang otomatis, dan pesan galat yang jelas.
+const netMsg = e => e && e.message==="HTML"
+  ? "Server membalas dengan halaman galat (izin skrip belum diberikan atau deployment belum diperbarui). Hubungi guru."
+  : "Tidak dapat terhubung ke server. Periksa internet lalu coba lagi.";
+async function call(url, opts={}, tries=3){
+  let last;
+  for(let i=0;i<tries;i++){
+    const ctl=new AbortController(), t=setTimeout(()=>ctl.abort(),30000);
+    try{
+      const r = await fetch(url,{...opts,signal:ctl.signal,cache:"no-store"}); clearTimeout(t);
+      const txt = await r.text();
+      try{ return JSON.parse(txt); }catch(e){ throw new Error("HTML"); }
+    }catch(e){ clearTimeout(t); last=e; if(i<tries-1) await new Promise(r=>setTimeout(r,900*(i+1))); }
+  }
+  throw new Error(netMsg(last));
+}
+const post = body => call(CONFIG.API_URL,{method:"POST",body:JSON.stringify(body)});
+const uid = ()=> (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2));
 const api = {
   async submit(type, row){
-    row.ts = new Date().toISOString();
+    row.ts = new Date().toISOString(); row.id = row.id || uid();
     if(DEMO){ const db=LS.get("pq_db",{log:[],ai:[]}); db[type].push(row); LS.set("pq_db",db); return {ok:true}; }
-    const r = await fetch(CONFIG.API_URL,{method:"POST",body:JSON.stringify({type,row})});
-    return r.json();
+    return post({type,row});
   },
   async roster(){
     if(DEMO) return {ok:true,roster:CONFIG.DEMO_ROSTER};
-    const r = await fetch(CONFIG.API_URL+"?action=roster"); return r.json();
+    return call(CONFIG.API_URL+"?action=roster");
   },
   async mine(kelas, absen, nama){
     if(DEMO){ const db=LS.get("pq_db",{log:[],ai:[]}); const f=x=>x.kelas===kelas&&String(x.absen)===String(absen)&&String(x.nama).trim().toLowerCase()===String(nama).trim().toLowerCase(); return {ok:true,log:db.log.filter(f),ai:db.ai.filter(f)}; }
-    const r = await fetch(CONFIG.API_URL+"?action=mine&kelas="+encodeURIComponent(kelas)+"&absen="+encodeURIComponent(absen)+"&nama="+encodeURIComponent(nama));
-    return r.json();
+    return call(CONFIG.API_URL+"?action=mine&kelas="+encodeURIComponent(kelas)+"&absen="+encodeURIComponent(absen)+"&nama="+encodeURIComponent(nama));
   },
   async resetRequest(){
     if(DEMO) return {ok:true,email:"(mode demo, tidak ada email)",demoCode:"DEMO1234"};
-    const r = await fetch(CONFIG.API_URL,{method:"POST",body:JSON.stringify({action:"resetRequest"})}); return r.json();
+    return call(CONFIG.API_URL,{method:"POST",body:JSON.stringify({action:"resetRequest"})},1);
   },
   async resetConfirm(code,pin){
     if(DEMO){ if(code.trim().toUpperCase()!=="DEMO1234") return {ok:false,error:"Kode salah."}; if(pin.length<6) return {ok:false,error:"PIN baru minimal 6 karakter."}; LS.set("pq_demopin",pin); return {ok:true}; }
-    const r = await fetch(CONFIG.API_URL,{method:"POST",body:JSON.stringify({action:"resetConfirm",code,pin})}); return r.json();
+    return call(CONFIG.API_URL,{method:"POST",body:JSON.stringify({action:"resetConfirm",code,pin})},1);
   },
   async all(pin){
-    if(DEMO){ if(pin!==LS.get("pq_demopin",CONFIG.DEMO_PIN)) return {ok:false}; const db=LS.get("pq_db",{log:[],ai:[]}); return {ok:true,...db}; }
-    const r = await fetch(CONFIG.API_URL+"?action=all&pin="+encodeURIComponent(pin));
-    return r.json();
+    if(DEMO){ if(pin!==LS.get("pq_demopin",CONFIG.DEMO_PIN)) return {ok:false,error:"PIN salah."}; const db=LS.get("pq_db",{log:[],ai:[]}); return {ok:true,...db}; }
+    return post({action:"all",pin});
+  },
+  async ping(){
+    if(DEMO) return {ok:true,demo:true};
+    return call(CONFIG.API_URL+"?action=ping",{},2);
   }
 };
 
@@ -254,9 +275,18 @@ function simpanMe(){ const x=((ROSTER[$("#kelas").value]||[])[$("#siswa").value]
 $("#kelas").onchange = ()=>{ isiSiswa(); simpanMe(); resetMine(); };
 $("#siswa").onchange = ()=>{ simpanMe(); resetMine(); };
 async function init(){
-  try{ const r=await api.roster(); ROSTER=r.roster||{}; }catch(e){}
+  $("#b-retry").hidden=true;
+  let r=null, gagal=false;
+  try{ r=await api.roster(); if(!(r.ok&&r.roster&&Object.keys(r.roster).length)) r=null; }catch(e){ gagal=true; r=null; }
+  if(r) LS.set("pq_roster",r.roster);
+  ROSTER = r ? r.roster : LS.get("pq_roster",{});
   const KL=Object.keys(ROSTER);
-  if(!KL.length){ $("#siswa").innerHTML=`<option value="">Daftar siswa belum termuat</option>`; $("#mode").textContent="Daftar siswa tidak ditemukan. Minta guru memeriksa sheet \"data\" (kolom Kelas, No Absen, Nama)."; $("#mode").className="msg mono bad"; return; }
+  if(!KL.length){
+    $("#siswa").innerHTML=`<option value="">Daftar siswa belum termuat</option>`;
+    $("#mode").textContent = gagal ? "Daftar siswa belum bisa dimuat karena server tidak terjangkau. Periksa internet lalu coba lagi." : "Daftar siswa tidak ditemukan. Minta guru memeriksa sheet \"data\" (kolom Kelas, No Absen, Nama).";
+    $("#mode").className="msg mono bad"; $("#b-retry").hidden=false; return;
+  }
+  if(!r && gagal){ $("#mode").textContent="Server sedang sulit dijangkau; memakai daftar siswa yang tersimpan di perangkat ini."; $("#mode").className="msg mono"; $("#b-retry").hidden=false; }
   $("#kelas").innerHTML = KL.map(k=>`<option>${esc(k)}</option>`).join("");
   $("#d-kelas").innerHTML = `<option value="">Semua kelas</option>` + KL.map(k=>`<option>${esc(k)}</option>`).join("");
   if(me.kelas&&ROSTER[me.kelas]) $("#kelas").value=me.kelas;
@@ -280,6 +310,7 @@ document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{
 });
 
 // ---- kirim form ----
+const PENDING={};
 async function kirim(type, formId, msgId, build){
   $(formId).addEventListener("submit", async e=>{
     e.preventDefault();
@@ -287,10 +318,11 @@ async function kirim(type, formId, msgId, build){
     if(!id){ m.className="msg bad"; m.textContent="Pilih kelas dan namamu di bagian atas dulu."; return; }
     const btn=e.submitter; btn.disabled=true; m.className="msg"; m.textContent="Menyimpan...";
     try{
-      const res = await api.submit(type,{...id,...build()});
-      if(res.ok){ m.className="msg ok"; m.textContent="Tersimpan. Kerja bagus, lanjutkan di sesi berikutnya."; e.target.reset(); $("#l-tgl").value=today; $("#a-tgl").value=today; $("#l-pv").textContent="0"; }
+      const sid = PENDING[formId] || (PENDING[formId]=uid());   // id sama dipakai saat kirim ulang agar tidak ganda
+      const res = await api.submit(type,{...id,...build(),id:sid});
+      if(res.ok){ delete PENDING[formId]; m.className="msg ok"; m.textContent="Tersimpan. Kerja bagus, lanjutkan di sesi berikutnya."; e.target.reset(); $("#l-tgl").value=today; $("#a-tgl").value=today; $("#l-pv").textContent="0"; }
       else throw new Error(res.error||"gagal");
-    }catch(err){ m.className="msg bad"; m.textContent="Belum tersimpan ("+err.message+"). Cek koneksi lalu coba lagi; isianmu masih ada."; }
+    }catch(err){ m.className="msg bad"; m.textContent="Belum tersimpan. "+err.message+" Isianmu masih ada; tekan simpan lagi (tidak akan tercatat dua kali)."; }
     btn.disabled=false;
   });
 }
@@ -341,13 +373,21 @@ $("#mine-out").addEventListener("click",e=>{ const b=e.target.closest("[data-pri
 // ---- dashboard guru ----
 let DATA=null;
 async function muat(pin){
-  const r = await api.all(pin); if(!r.ok) throw new Error("PIN salah atau data tidak dapat dimuat");
+  const r = await api.all(String(pin).trim()); if(!r.ok) throw new Error(r.error||"Data tidak dapat dimuat.");
   DATA={log:r.log||[],ai:r.ai||[]}; sessionStorage.setItem("pq_pin",pin); renderDash();
 }
 $("#b-pin").onclick = async ()=>{
   const m=$("#m-pin"); m.className="msg"; m.textContent="Memeriksa...";
-  try{ await muat($("#pin").value); $("#gate").hidden=true; $("#dash").hidden=false; $("#demo-box").hidden=!DEMO; m.textContent=""; }
+  try{ await muat($("#pin").value.trim()); $("#gate").hidden=true; $("#dash").hidden=false; $("#demo-box").hidden=!DEMO; m.textContent=""; }
   catch(e){ m.className="msg bad"; m.textContent=e.message; }
+};
+$("#a-cek").onclick = async e=>{
+  e.preventDefault(); const c=$("#cek"); c.hidden=false; c.textContent="Memeriksa server...";
+  try{ const r=await api.ping();
+    if(r.demo){ c.textContent="Mode demo: tidak ada server. Isi API_URL di index.html untuk terhubung ke Google Sheet."; return; }
+    if(!r.ok) throw new Error(r.error||"galat");
+    c.innerHTML = `Server terhubung (versi ${esc(r.versi)}).<br>Sheet "data": ${esc(r.siswa)} siswa di ${esc(r.kelas)} kelas${r.siswa?"":" - <b>tidak terbaca, periksa sheet data</b>"}.<br>Pengiriman email: ${r.emailOk?"izin OK":"<b>izin BELUM diberikan - jalankan fungsi setup di Apps Script lalu deploy versi baru</b>"}; penerima: ${esc(r.email||"BELUM DIISI (isi GURU_EMAIL)")}.<br>PIN: ${r.pinTersimpan?"sudah pernah diganti lewat Lupa PIN":"memakai PIN_AWAL di Code.gs"}.`;
+  }catch(err){ c.textContent = err.message; }
 };
 $("#a-lupa").onclick = e=>{ e.preventDefault(); $("#reset").hidden = !$("#reset").hidden; };
 $("#b-kirim").onclick = async ()=>{
@@ -429,6 +469,7 @@ $("#b-demo").onclick = async ()=>{
     if(i%3!==0) db.ai.push({ts:d(5-(i%3)),kelas:k,absen:i+1,nama:n+" (contoh)",tanggal:d(5).slice(0,10),masalah:"Contoh masalah",upaya:"Sudah mencoba membaca error dan print variabel",prompt:"",saran:"",diuji:i===4?"Belum diuji":"Sudah diuji, berhasil",porsi:i===6?"Sebagian besar kusalin":"Hanya petunjuk/penjelasan",penjelasan:"Contoh penjelasan",refleksi:""}); });
   LS.set("pq_db",db); await muat(sessionStorage.getItem("pq_pin"));
 };
+$("#b-retry").onclick=()=>init();
 init();
 </script>
 </body>
