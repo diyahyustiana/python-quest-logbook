@@ -142,6 +142,18 @@ a{color:var(--blue)}
     <label for="pin">PIN guru</label>
     <div class="row"><input id="pin" type="password" autocomplete="off"><button class="btn" id="b-pin" style="margin:0">Buka dashboard</button></div>
     <p class="msg" id="m-pin" role="status"></p>
+    <p style="margin:10px 0 0"><a href="#" id="a-lupa">Lupa PIN?</a></p>
+    <div id="reset" hidden>
+      <div class="hint">Kode reset dikirim ke email guru (pemilik Google Sheet) dan berlaku 15 menit. PIN lama tetap berlaku sampai PIN baru disimpan.</div>
+      <button class="btn alt" id="b-kirim" style="margin:0">Kirim kode ke email</button>
+      <div id="reset2" hidden>
+        <label for="r-kode">Kode dari email</label><input id="r-kode" autocomplete="off" style="text-transform:uppercase">
+        <label for="r-pin1">PIN baru <small>(minimal 6 karakter)</small></label><input id="r-pin1" type="password" autocomplete="new-password">
+        <label for="r-pin2">Ulangi PIN baru</label><input id="r-pin2" type="password" autocomplete="new-password">
+        <button class="btn" id="b-simpan">Simpan PIN baru</button>
+      </div>
+      <p class="msg" id="m-reset" role="status"></p>
+    </div>
   </div>
   <div id="dash" hidden>
     <div class="row" style="margin-bottom:14px">
@@ -164,7 +176,7 @@ a{color:var(--blue)}
 // Isi API_URL dengan alamat Web App Google Apps Script (lihat PANDUAN-PASANG.md).
 // Jika kosong, aplikasi berjalan dalam MODE DEMO (data tersimpan di browser ini saja).
 const CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbyo8aIKQdS7BTNb-8c3fQx0q7wpe4IU3IRNW0fecipeNeWIfnimh72VYjphuPrsFhkwSg/exec",
+  API_URL: "https://script.google.com/macros/s/AKfycbzTAn5fh3uT5mxv7KvuzFXirDVfaFq76niHc0PAZ2gGIIMT8qisCXszTWkH45lp0wfeTw/exec",
   // Daftar siswa diambil dari sheet "data" di Google Sheet. Di mode demo dipakai daftar contoh ini.
   DEMO_ROSTER: {
     "XI TKJ 1":[[1,"Ayu"],[2,"Bima"],[3,"Citra"],[4,"Dimas"],[9,"Indah"]].map(a=>({absen:a[0],nama:a[1]+" (contoh)"})),
@@ -197,8 +209,16 @@ const api = {
     const r = await fetch(CONFIG.API_URL+"?action=mine&kelas="+encodeURIComponent(kelas)+"&absen="+encodeURIComponent(absen)+"&nama="+encodeURIComponent(nama));
     return r.json();
   },
+  async resetRequest(){
+    if(DEMO) return {ok:true,email:"(mode demo, tidak ada email)",demoCode:"DEMO1234"};
+    const r = await fetch(CONFIG.API_URL,{method:"POST",body:JSON.stringify({action:"resetRequest"})}); return r.json();
+  },
+  async resetConfirm(code,pin){
+    if(DEMO){ if(code.trim().toUpperCase()!=="DEMO1234") return {ok:false,error:"Kode salah."}; if(pin.length<6) return {ok:false,error:"PIN baru minimal 6 karakter."}; LS.set("pq_demopin",pin); return {ok:true}; }
+    const r = await fetch(CONFIG.API_URL,{method:"POST",body:JSON.stringify({action:"resetConfirm",code,pin})}); return r.json();
+  },
   async all(pin){
-    if(DEMO){ if(pin!==CONFIG.DEMO_PIN) return {ok:false}; const db=LS.get("pq_db",{log:[],ai:[]}); return {ok:true,...db}; }
+    if(DEMO){ if(pin!==LS.get("pq_demopin",CONFIG.DEMO_PIN)) return {ok:false}; const db=LS.get("pq_db",{log:[],ai:[]}); return {ok:true,...db}; }
     const r = await fetch(CONFIG.API_URL+"?action=all&pin="+encodeURIComponent(pin));
     return r.json();
   }
@@ -313,6 +333,23 @@ $("#b-pin").onclick = async ()=>{
   const m=$("#m-pin"); m.className="msg"; m.textContent="Memeriksa...";
   try{ await muat($("#pin").value); $("#gate").hidden=true; $("#dash").hidden=false; $("#demo-box").hidden=!DEMO; m.textContent=""; }
   catch(e){ m.className="msg bad"; m.textContent=e.message; }
+};
+$("#a-lupa").onclick = e=>{ e.preventDefault(); $("#reset").hidden = !$("#reset").hidden; };
+$("#b-kirim").onclick = async ()=>{
+  const m=$("#m-reset"), b=$("#b-kirim"); b.disabled=true; m.className="msg"; m.textContent="Mengirim kode...";
+  try{ const r=await api.resetRequest(); if(!r.ok) throw new Error(r.error||"gagal");
+    m.className="msg ok"; m.textContent="Kode dikirim ke "+r.email+". Periksa kotak masuk dan folder spam."+(r.demoCode?" (Demo: kodenya "+r.demoCode+")":""); $("#reset2").hidden=false; $("#r-kode").focus();
+  }catch(e){ m.className="msg bad"; m.textContent=e.message; }
+  b.disabled=false;
+};
+$("#b-simpan").onclick = async ()=>{
+  const m=$("#m-reset"), p1=$("#r-pin1").value, p2=$("#r-pin2").value;
+  if(p1.length<6){ m.className="msg bad"; m.textContent="PIN baru minimal 6 karakter."; return; }
+  if(p1!==p2){ m.className="msg bad"; m.textContent="Pengulangan PIN tidak sama."; return; }
+  m.className="msg"; m.textContent="Menyimpan...";
+  try{ const r=await api.resetConfirm($("#r-kode").value,p1); if(!r.ok) throw new Error(r.error||"gagal");
+    m.className="msg ok"; m.textContent="PIN baru tersimpan. Silakan masuk dengan PIN baru."; $("#reset2").hidden=true; ["#r-kode","#r-pin1","#r-pin2","#pin"].forEach(i=>$(i).value="");
+  }catch(e){ m.className="msg bad"; m.textContent=e.message; }
 };
 $("#b-ref").onclick = ()=>muat(sessionStorage.getItem("pq_pin")||"").catch(e=>alert(e.message));
 $("#d-kelas").onchange = ()=>renderDash();
