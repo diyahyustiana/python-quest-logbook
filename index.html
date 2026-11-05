@@ -77,7 +77,7 @@ a{color:var(--blue)}
 <section class="panel" id="who">
   <div class="row">
     <div><label for="kelas">Kelas</label><select id="kelas"></select></div>
-    <div style="flex:3"><label for="siswa">Nama lengkap</label><select id="siswa"><option value="">Memuat daftar siswa...</option></select></div>
+    <div style="flex:3"><label for="siswa">Nama lengkap <small id="jml"></small></label><select id="siswa"><option value="">Memuat daftar siswa...</option></select></div>
   </div>
   <p class="msg mono" id="mode" style="font-size:.75rem;color:var(--mute)"></p>
 </section>
@@ -164,13 +164,13 @@ a{color:var(--blue)}
 // Isi API_URL dengan alamat Web App Google Apps Script (lihat PANDUAN-PASANG.md).
 // Jika kosong, aplikasi berjalan dalam MODE DEMO (data tersimpan di browser ini saja).
 const CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbzGi03t-NM4uJPNTLSwFnDuCqQeaTxkZUU-cjuLf3grvxnwTcw-BdSmI58d6cjYTCstFA/exec",
+  API_URL: "https://script.google.com/macros/s/AKfycbyo8aIKQdS7BTNb-8c3fQx0q7wpe4IU3IRNW0fecipeNeWIfnimh72VYjphuPrsFhkwSg/exec",
   // Daftar siswa diambil dari sheet "data" di Google Sheet. Di mode demo dipakai daftar contoh ini.
   DEMO_ROSTER: {
     "XI TKJ 1":[[1,"Ayu"],[2,"Bima"],[3,"Citra"],[4,"Dimas"],[9,"Indah"]].map(a=>({absen:a[0],nama:a[1]+" (contoh)"})),
     "XI TKJ 2":[[5,"Eka"],[6,"Fajar"],[7,"Gita"],[8,"Hadi"],[10,"Joko"]].map(a=>({absen:a[0],nama:a[1]+" (contoh)"}))
   },
-  DEMO_PIN: "diyah1029",
+  DEMO_PIN: "diyah1981",
   INAKTIF_HARI: 7
 };
 // =========================
@@ -192,9 +192,9 @@ const api = {
     if(DEMO) return {ok:true,roster:CONFIG.DEMO_ROSTER};
     const r = await fetch(CONFIG.API_URL+"?action=roster"); return r.json();
   },
-  async mine(kelas, absen){
-    if(DEMO){ const db=LS.get("pq_db",{log:[],ai:[]}); const f=x=>x.kelas===kelas&&String(x.absen)===String(absen); return {ok:true,log:db.log.filter(f),ai:db.ai.filter(f)}; }
-    const r = await fetch(CONFIG.API_URL+"?action=mine&kelas="+encodeURIComponent(kelas)+"&absen="+encodeURIComponent(absen));
+  async mine(kelas, absen, nama){
+    if(DEMO){ const db=LS.get("pq_db",{log:[],ai:[]}); const f=x=>x.kelas===kelas&&String(x.absen)===String(absen)&&String(x.nama).trim().toLowerCase()===String(nama).trim().toLowerCase(); return {ok:true,log:db.log.filter(f),ai:db.ai.filter(f)}; }
+    const r = await fetch(CONFIG.API_URL+"?action=mine&kelas="+encodeURIComponent(kelas)+"&absen="+encodeURIComponent(absen)+"&nama="+encodeURIComponent(nama));
     return r.json();
   },
   async all(pin){
@@ -207,13 +207,15 @@ const api = {
 // ---- init ----
 let ROSTER = {};
 const me = LS.get("pq_me",{});
-const namaSiswa = (k,a)=>((ROSTER[k]||[]).find(x=>String(x.absen)===String(a))||{}).nama;
-function isiSiswa(pilih){
+const key = (k,a,n)=>k+"|"+Number(a)+"|"+String(n).trim().toLowerCase();
+function isiSiswa(pilihNama){
   const L = ROSTER[$("#kelas").value]||[];
-  $("#siswa").innerHTML = `<option value="">- pilih namamu -</option>` + L.map(x=>`<option value="${esc(x.absen)}">${esc(x.absen)}. ${esc(x.nama)}</option>`).join("");
-  $("#siswa").value = pilih||"";
+  $("#siswa").innerHTML = `<option value="">- pilih namamu (${L.length} siswa) -</option>` + L.map((x,i)=>`<option value="${i}">${esc(x.absen)}. ${esc(x.nama)}</option>`).join("");
+  const i = L.findIndex(x=>x.nama===pilihNama);
+  $("#siswa").value = i>=0 ? String(i) : "";
+  $("#jml").textContent = "· "+L.length+" siswa di kelas ini";
 }
-function simpanMe(){ LS.set("pq_me",{kelas:$("#kelas").value,absen:$("#siswa").value}); }
+function simpanMe(){ const x=((ROSTER[$("#kelas").value]||[])[$("#siswa").value])||{}; LS.set("pq_me",{kelas:$("#kelas").value,nama:x.nama||""}); }
 $("#kelas").onchange = ()=>{ isiSiswa(); simpanMe(); resetMine(); };
 $("#siswa").onchange = ()=>{ simpanMe(); resetMine(); };
 async function init(){
@@ -223,15 +225,15 @@ async function init(){
   $("#kelas").innerHTML = KL.map(k=>`<option>${esc(k)}</option>`).join("");
   $("#d-kelas").innerHTML = `<option value="">Semua kelas</option>` + KL.map(k=>`<option>${esc(k)}</option>`).join("");
   if(me.kelas&&ROSTER[me.kelas]) $("#kelas").value=me.kelas;
-  isiSiswa(namaSiswa($("#kelas").value,me.absen)?me.absen:"");
+  isiSiswa(me.nama);
 }
 const today = new Date().toISOString().slice(0,10); $("#l-tgl").value=today; $("#a-tgl").value=today;
 $("#mode").textContent = DEMO ? "MODE DEMO: data hanya tersimpan di browser ini. Hubungkan ke Google Sheet agar data terkumpul untuk guru." : "Terhubung ke Google Sheet kelas.";
 $("#l-prog").oninput = e => $("#l-pv").textContent = e.target.value;
 
 function ident(){
-  const kelas=$("#kelas").value, absen=$("#siswa").value, nama=namaSiswa(kelas,absen);
-  return (absen&&nama) ? {kelas,absen,nama} : null;
+  const kelas=$("#kelas").value, x=(ROSTER[kelas]||[])[$("#siswa").value];
+  return ($("#siswa").value!==""&&x) ? {kelas,absen:x.absen,nama:x.nama} : null;
 }
 
 // ---- tab ----
@@ -275,7 +277,7 @@ async function muatMine(){
   const id=ident(), out=$("#mine-out");
   if(!id){ out.innerHTML=`<p class="msg bad">Pilih kelas dan namamu di bagian atas dulu.</p>`; return; }
   out.innerHTML="<p class='msg'>Memuat...</p>";
-  try{ const r=await api.mine(id.kelas,id.absen);
+  try{ const r=await api.mine(id.kelas,id.absen,id.nama);
     const L=[...(r.log||[])].sort((a,b)=>b.ts.localeCompare(a.ts)), A=[...(r.ai||[])].sort((a,b)=>b.ts.localeCompare(a.ts));
     MINE={log:L,ai:A};
     out.innerHTML = `<h3>Riwayat ${esc(id.nama)} (${esc(id.kelas)}, no. ${esc(id.absen)})</h3><h3>Log sesi (${L.length})</h3>${L.map((x,i)=>renderLog(x,"log",i)).join("")||"<p class='msg'>Belum ada log sesi.</p>"}<h3>AI checkpoint (${A.length})</h3>${A.map((x,i)=>renderAi(x,"ai",i)).join("")||"<p class='msg'>Belum ada checkpoint.</p>"}`;
@@ -317,7 +319,7 @@ $("#d-kelas").onchange = ()=>renderDash();
 
 function rekap(){
   const kf=$("#d-kelas").value, map={};
-  const add=(x,t)=>{ if(kf&&x.kelas!==kf) return; const k=x.kelas+"|"+x.absen; const s=map[k]??={kelas:x.kelas,absen:Number(x.absen),nama:x.nama,log:[],ai:[]}; s[t].push(x); s.nama=x.nama; };
+  const add=(x,t)=>{ if(kf&&x.kelas!==kf) return; const k=key(x.kelas,x.absen,x.nama); const s=map[k]??={kelas:x.kelas,absen:Number(x.absen),nama:x.nama,log:[],ai:[]}; s[t].push(x); s.nama=x.nama; };
   DATA.log.forEach(x=>add(x,"log")); DATA.ai.forEach(x=>add(x,"ai"));
   return Object.values(map).map(s=>{
     s.log.sort((a,b)=>a.ts.localeCompare(b.ts)); s.ai.sort((a,b)=>a.ts.localeCompare(b.ts));
@@ -339,8 +341,8 @@ function renderDash(){
   const perhatian = R.filter(s=>s.flag.length).length;
   $("#cards").innerHTML = [[R.length+"/"+total,"siswa sudah mengisi"],[avg+"%","rata-rata progres"],[R.reduce((a,s)=>a+s.log.length,0),"log sesi"],[R.reduce((a,s)=>a+s.ai.length,0),"AI checkpoint"],[perhatian,"perlu perhatian"]].map(c=>`<div class="card"><b>${esc(c[0])}</b><span>${esc(c[1])}</span></div>`).join("");
   $("#tbl").innerHTML = `<tr><th>Kelas</th><th>No</th><th>Nama</th><th>Progres</th><th>Log</th><th>AI</th><th>Terakhir</th><th>Catatan</th></tr>` + (R.map((s,i)=>`<tr data-i="${i}" style="cursor:pointer"><td>${esc(s.kelas)}</td><td>${s.absen}</td><td>${esc(s.nama)}</td><td><div class="bar"><i style="width:${s.progres}%"></i></div>${s.progres}%</td><td>${s.log.length}</td><td>${s.ai.length}</td><td>${esc(s.terakhir.slice(0,10))}</td><td>${s.flag.map(f=>`<span class="tag w">${esc(f)}</span>`).join("")||`<span class="tag g">lancar</span>`}</td></tr>`).join("")||`<tr><td colspan="8">Belum ada data. Minta siswa mengisi log sesi pertama.</td></tr>`);
-  const sudah=new Set(R.map(s=>s.kelas+"|"+s.absen)), B=[];
-  Object.entries(ROSTER).forEach(([k,L])=>{ if(kf&&k!==kf) return; L.forEach(x=>{ if(!sudah.has(k+"|"+x.absen)) B.push(k+" · "+x.absen+". "+x.nama); }); });
+  const sudah=new Set(R.map(s=>key(s.kelas,s.absen,s.nama))), B=[];
+  Object.entries(ROSTER).forEach(([k,L])=>{ if(kf&&k!==kf) return; L.forEach(x=>{ if(!sudah.has(key(k,x.absen,x.nama))) B.push(k+" · "+x.absen+". "+x.nama); }); });
   $("#belum").innerHTML = `<h3 style="margin-top:0">Belum mengisi (${B.length})</h3>` + (B.length?`<p>${B.map(esc).join("<br>")}</p>`:`<p class="msg ok">Semua siswa sudah mengisi.</p>`);
   $("#tbl").querySelectorAll("tr[data-i]").forEach(tr=>tr.onclick=()=>{ const s=R[tr.dataset.i], d=$("#detail"); d.hidden=false;
     d.innerHTML=`<h3 style="margin-top:0">${esc(s.nama)} · ${esc(s.kelas)} no. ${s.absen}</h3><h3>Log sesi</h3>${[...s.log].reverse().map(x=>renderLog(x)).join("")||"<p class='msg'>Belum ada.</p>"}<h3>AI checkpoint</h3>${[...s.ai].reverse().map(x=>renderAi(x)).join("")||"<p class='msg'>Belum ada.</p>"}`; d.scrollIntoView({behavior:"smooth"}); });
