@@ -45,6 +45,19 @@ th{color:var(--mute);font-size:.75rem;font-weight:600}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.row>*{flex:1;min-width:140px}
 a{color:var(--blue)}
 [hidden]{display:none!important}
+#print-area{display:none}
+@media print{
+  body{background:#fff}
+  body>*:not(#print-area){display:none!important}
+  #print-area{display:block;color:#000;font:11pt/1.5 'Source Sans 3',Arial,sans-serif}
+  #print-area h2{font:800 15pt 'JetBrains Mono',monospace;margin:0 0 10px;border-bottom:2px solid #000;padding-bottom:6px}
+  #print-area table{width:100%;border-collapse:collapse;margin-bottom:12px}
+  #print-area .idt td{border:0;padding:2px 8px 2px 0;width:auto}#print-area .idt td:first-child{width:90px;font-weight:600}
+  #print-area .isi th,#print-area .isi td{border:1px solid #888;padding:6px 8px;color:#000;font-size:10.5pt}
+  #print-area .isi th{width:32%;background:#eee;font-family:inherit;font-weight:600}
+  #print-area .isi td{white-space:pre-wrap;word-break:break-word}
+  #print-area .ft{font-size:9pt;color:#444}
+}
 @media(prefers-reduced-motion:no-preference){.panel{transition:border-color .2s}.panel:focus-within{border-color:var(--blue)}}
 </style>
 </head>
@@ -65,7 +78,6 @@ a{color:var(--blue)}
   <div class="row">
     <div><label for="kelas">Kelas</label><select id="kelas"></select></div>
     <div style="flex:3"><label for="siswa">Nama lengkap</label><select id="siswa"><option value="">Memuat daftar siswa...</option></select></div>
-    <div style="max-width:120px;min-width:100px"><label for="absen">No. absen</label><input id="absen" readonly tabindex="-1"></div>
   </div>
   <p class="msg mono" id="mode" style="font-size:.75rem;color:var(--mute)"></p>
 </section>
@@ -146,18 +158,19 @@ a{color:var(--blue)}
 </section>
 </main>
 
+<div id="print-area"></div>
 <script>
 // ====== KONFIGURASI ======
 // Isi API_URL dengan alamat Web App Google Apps Script (lihat PANDUAN-PASANG.md).
 // Jika kosong, aplikasi berjalan dalam MODE DEMO (data tersimpan di browser ini saja).
 const CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbwo2xjUO2iA55Z1_gUZQ3u-33JRbkqRg2KtK_ZMdmKn6f25_CbRCnMzYzNWCwz87sTSkw/exec",
+  API_URL: "",
   // Daftar siswa diambil dari sheet "data" di Google Sheet. Di mode demo dipakai daftar contoh ini.
   DEMO_ROSTER: {
     "XI TKJ 1":[[1,"Ayu"],[2,"Bima"],[3,"Citra"],[4,"Dimas"],[9,"Indah"]].map(a=>({absen:a[0],nama:a[1]+" (contoh)"})),
     "XI TKJ 2":[[5,"Eka"],[6,"Fajar"],[7,"Gita"],[8,"Hadi"],[10,"Joko"]].map(a=>({absen:a[0],nama:a[1]+" (contoh)"}))
   },
-  DEMO_PIN: "diyah1029",
+  DEMO_PIN: "guru123",
   INAKTIF_HARI: 7
 };
 // =========================
@@ -198,11 +211,11 @@ const namaSiswa = (k,a)=>((ROSTER[k]||[]).find(x=>String(x.absen)===String(a))||
 function isiSiswa(pilih){
   const L = ROSTER[$("#kelas").value]||[];
   $("#siswa").innerHTML = `<option value="">- pilih namamu -</option>` + L.map(x=>`<option value="${esc(x.absen)}">${esc(x.absen)}. ${esc(x.nama)}</option>`).join("");
-  $("#siswa").value = pilih||""; $("#absen").value = $("#siswa").value;
+  $("#siswa").value = pilih||"";
 }
 function simpanMe(){ LS.set("pq_me",{kelas:$("#kelas").value,absen:$("#siswa").value}); }
-$("#kelas").onchange = ()=>{ isiSiswa(); simpanMe(); if(!$("#p-mine").hidden) muatMine(); };
-$("#siswa").onchange = ()=>{ $("#absen").value=$("#siswa").value; simpanMe(); if(!$("#p-mine").hidden) muatMine(); };
+$("#kelas").onchange = ()=>{ isiSiswa(); simpanMe(); resetMine(); };
+$("#siswa").onchange = ()=>{ simpanMe(); resetMine(); };
 async function init(){
   try{ const r=await api.roster(); ROSTER=r.roster||{}; }catch(e){}
   const KL=Object.keys(ROSTER);
@@ -226,7 +239,7 @@ document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("#tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
   ["log","ai","mine","dash"].forEach(t=>$("#p-"+t).hidden = t!==b.dataset.t);
   $("#who").hidden = b.dataset.t==="dash";
-  if(b.dataset.t==="mine") muatMine();
+  if(b.dataset.t==="mine") resetMine();
 });
 
 // ---- kirim form ----
@@ -250,21 +263,43 @@ kirim("ai","#f-ai","#m-ai",()=>({tanggal:v("#a-tgl"),masalah:v("#a-masalah"),upa
 
 // ---- riwayat siswa ----
 const link = u => /^https?:\/\//.test(u) ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a>` : esc(u);
-function renderLog(x){ return `<div class="entry"><h3>${esc(x.tanggal)} · Pertemuan ${esc(x.pertemuan)} · ${esc(x.tahap)}</h3>
+const btnCetak = (t,i)=> typeof t==="string" ? `<p class="noprint"><button class="btn alt" style="margin:6px 0 0;padding:6px 12px" data-print="${t}" data-i="${i}">Cetak PDF</button></p>` : "";
+function renderLog(x,t,i){ return `<div class="entry"><h3>${esc(x.tanggal)} · Pertemuan ${esc(x.pertemuan)} · ${esc(x.tahap)}</h3>
 <p><b>Target:</b> ${esc(x.target)}</p><p><b>Dikerjakan:</b> ${esc(x.dikerjakan)}</p>${x.error?`<p><b>Error:</b> ${esc(x.error)} → ${esc(x.solusi)}</p>`:""}
-<p>${link(x.commit)}</p><p><span class="tag">${esc(x.progres)}%</span><span class="tag">${esc(x.status)}</span></p></div>`; }
-function renderAi(x){ return `<div class="entry"><h3>${esc(x.tanggal)} · AI Checkpoint</h3><p><b>Masalah:</b> ${esc(x.masalah)}</p><p><b>Upaya awal:</b> ${esc(x.upaya)}</p>
-<p><b>Penjelasanku:</b> ${esc(x.penjelasan)}</p><p><span class="tag ${x.diuji==="Belum diuji"?"w":"g"}">${esc(x.diuji)}</span><span class="tag ${x.porsi.startsWith("Sebagian besar")?"w":""}">${esc(x.porsi)}</span></p></div>`; }
+<p>${link(x.commit)}</p><p><span class="tag">${esc(x.progres)}%</span><span class="tag">${esc(x.status)}</span></p>${btnCetak(t,i)}</div>`; }
+function renderAi(x,t,i){ return `<div class="entry"><h3>${esc(x.tanggal)} · AI Checkpoint</h3><p><b>Masalah:</b> ${esc(x.masalah)}</p><p><b>Upaya awal:</b> ${esc(x.upaya)}</p>
+<p><b>Penjelasanku:</b> ${esc(x.penjelasan)}</p><p><span class="tag ${x.diuji==="Belum diuji"?"w":"g"}">${esc(x.diuji)}</span><span class="tag ${x.porsi.startsWith("Sebagian besar")?"w":""}">${esc(x.porsi)}</span></p>${btnCetak(t,i)}</div>`; }
+let MINE={log:[],ai:[]};
+function resetMine(){ MINE={log:[],ai:[]}; $("#mine-out").innerHTML=""; }
 async function muatMine(){
   const id=ident(), out=$("#mine-out");
   if(!id){ out.innerHTML=`<p class="msg bad">Pilih kelas dan namamu di bagian atas dulu.</p>`; return; }
   out.innerHTML="<p class='msg'>Memuat...</p>";
   try{ const r=await api.mine(id.kelas,id.absen);
     const L=[...(r.log||[])].sort((a,b)=>b.ts.localeCompare(a.ts)), A=[...(r.ai||[])].sort((a,b)=>b.ts.localeCompare(a.ts));
-    out.innerHTML = `<h3>Riwayat ${esc(id.nama)} (${esc(id.kelas)}, no. ${esc(id.absen)})</h3><h3>Log sesi (${L.length})</h3>${L.map(renderLog).join("")||"<p class='msg'>Belum ada log sesi.</p>"}<h3>AI checkpoint (${A.length})</h3>${A.map(renderAi).join("")||"<p class='msg'>Belum ada checkpoint.</p>"}`;
+    MINE={log:L,ai:A};
+    out.innerHTML = `<h3>Riwayat ${esc(id.nama)} (${esc(id.kelas)}, no. ${esc(id.absen)})</h3><h3>Log sesi (${L.length})</h3>${L.map((x,i)=>renderLog(x,"log",i)).join("")||"<p class='msg'>Belum ada log sesi.</p>"}<h3>AI checkpoint (${A.length})</h3>${A.map((x,i)=>renderAi(x,"ai",i)).join("")||"<p class='msg'>Belum ada checkpoint.</p>"}`;
   }catch(e){ out.innerHTML="<p class='msg bad'>Gagal memuat. Coba lagi.</p>"; }
 }
 $("#b-mine").onclick = muatMine;
+
+// ---- cetak PDF (lewat dialog cetak browser, pilih "Simpan sebagai PDF") ----
+const FIELD = {
+  log:[["tanggal","Tanggal"],["pertemuan","Pertemuan ke-"],["tahap","Tahap proyek"],["target","Target sesi"],["dikerjakan","Yang dikerjakan"],["commit","Link commit/repository GitHub"],["error","Error yang ditemui"],["solusi","Cara menelusuri & memperbaiki"],["progres","Progres proyek (%)"],["status","Status sesi"],["kendala","Kendala yang masih ada"],["rencana","Rencana sesi berikutnya"]],
+  ai:[["tanggal","Tanggal"],["masalah","Masalah yang dihadapi"],["upaya","Upaya sebelum bertanya ke AI"],["prompt","Pertanyaan (prompt) ke AI"],["saran","Ringkasan jawaban AI"],["diuji","Hasil pengujian saran AI"],["porsi","Porsi kode AI yang dipakai"],["penjelasan","Penjelasan ulang dengan kata sendiri"],["refleksi","Yang dipelajari"]]
+};
+function cetak(t,i){
+  const x=MINE[t][i], id=ident(); if(!x||!id) return;
+  const judul = t==="log" ? "Log Sesi" : "AI Checkpoint";
+  $("#print-area").innerHTML = `<h2>Python Quest Logbook - ${judul}</h2>
+    <table class="idt"><tr><td>Nama</td><td>${esc(id.nama)}</td></tr><tr><td>Kelas</td><td>${esc(id.kelas)}</td></tr><tr><td>No. absen</td><td>${esc(id.absen)}</td></tr></table>
+    <table class="isi">${FIELD[t].map(f=>`<tr><th>${esc(f[1])}</th><td>${esc(x[f[0]]||"-")}</td></tr>`).join("")}</table>
+    <p class="ft">Dicatat: ${esc(String(x.ts).replace("T"," ").slice(0,16))} · Dicetak: ${esc(new Date().toLocaleString("id-ID"))}</p>`;
+  const lama=document.title; document.title=`Logbook ${judul} - ${id.nama} - ${x.tanggal}`;
+  window.addEventListener("afterprint",()=>{document.title=lama;$("#print-area").innerHTML="";},{once:true});
+  window.print();
+}
+$("#mine-out").addEventListener("click",e=>{ const b=e.target.closest("[data-print]"); if(b) cetak(b.dataset.print,Number(b.dataset.i)); });
 
 // ---- dashboard guru ----
 let DATA=null;
@@ -308,7 +343,7 @@ function renderDash(){
   Object.entries(ROSTER).forEach(([k,L])=>{ if(kf&&k!==kf) return; L.forEach(x=>{ if(!sudah.has(k+"|"+x.absen)) B.push(k+" · "+x.absen+". "+x.nama); }); });
   $("#belum").innerHTML = `<h3 style="margin-top:0">Belum mengisi (${B.length})</h3>` + (B.length?`<p>${B.map(esc).join("<br>")}</p>`:`<p class="msg ok">Semua siswa sudah mengisi.</p>`);
   $("#tbl").querySelectorAll("tr[data-i]").forEach(tr=>tr.onclick=()=>{ const s=R[tr.dataset.i], d=$("#detail"); d.hidden=false;
-    d.innerHTML=`<h3 style="margin-top:0">${esc(s.nama)} · ${esc(s.kelas)} no. ${s.absen}</h3><h3>Log sesi</h3>${[...s.log].reverse().map(renderLog).join("")||"<p class='msg'>Belum ada.</p>"}<h3>AI checkpoint</h3>${[...s.ai].reverse().map(renderAi).join("")||"<p class='msg'>Belum ada.</p>"}`; d.scrollIntoView({behavior:"smooth"}); });
+    d.innerHTML=`<h3 style="margin-top:0">${esc(s.nama)} · ${esc(s.kelas)} no. ${s.absen}</h3><h3>Log sesi</h3>${[...s.log].reverse().map(x=>renderLog(x)).join("")||"<p class='msg'>Belum ada.</p>"}<h3>AI checkpoint</h3>${[...s.ai].reverse().map(x=>renderAi(x)).join("")||"<p class='msg'>Belum ada.</p>"}`; d.scrollIntoView({behavior:"smooth"}); });
 }
 $("#b-csv").onclick = ()=>{
   const R=rekap(), q=s=>'"'+String(s).replace(/"/g,'""')+'"';
