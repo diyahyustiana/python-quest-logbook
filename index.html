@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Python Quest Logbook</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f141b;--panel:#171e28;--line:#2a3544;--tx:#e6ebf2;--mute:#8d9bb0;--blue:#4b8bbe;--yel:#ffd43b;--ok:#5fd08a;--bad:#ff7a6b;--r:6px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.55 'Source Sans 3',system-ui,sans-serif}
+h1,h2,h3,.mono,label,button,th{font-family:'JetBrains Mono',ui-monospace,Consolas,monospace}
+header{padding:20px 16px 0;max-width:1100px;margin:auto}
+h1{font-size:1.5rem;margin:0;font-weight:800}h1 span{color:var(--yel)}
+.sub{color:var(--mute);margin:4px 0 16px}
+nav{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+nav button{background:none;border:0;color:var(--mute);padding:10px 14px;cursor:pointer;font-size:.9rem;border-bottom:3px solid transparent}
+nav button[aria-selected=true]{color:var(--yel);border-color:var(--yel)}
+main{max-width:1100px;margin:auto;padding:20px 16px 60px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+label{display:block;font-size:.8rem;color:var(--mute);margin:12px 0 4px}
+label small{font-family:'Source Sans 3',sans-serif;color:var(--mute)}
+input,select,textarea{width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:var(--r);padding:9px 10px;font:inherit}
+textarea{min-height:84px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.btn{background:var(--yel);color:#1a1a1a;border:0;border-radius:var(--r);padding:10px 18px;font-weight:600;cursor:pointer;margin-top:16px}
+.btn.alt{background:none;color:var(--tx);border:1px solid var(--line)}
+.msg{margin-top:12px;font-size:.9rem}.ok{color:var(--ok)}.bad{color:var(--bad)}
+.hint{border-left:3px solid var(--blue);padding:6px 12px;color:var(--mute);font-size:.9rem;margin:10px 0}
+.flow{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--blue)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.card b{display:block;font:800 1.7rem 'JetBrains Mono',monospace;color:var(--yel)}
+.card span{color:var(--mute);font-size:.85rem}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-size:.75rem;font-weight:600}
+.tw{overflow-x:auto}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:.75rem;border:1px solid var(--line);margin:1px 2px 1px 0}
+.tag.w{border-color:var(--bad);color:var(--bad)}.tag.g{border-color:var(--ok);color:var(--ok)}
+.bar{height:8px;background:var(--bg);border-radius:4px;min-width:70px;overflow:hidden}.bar i{display:block;height:100%;background:var(--blue)}
+.entry{border-top:1px solid var(--line);padding:12px 0}.entry:first-child{border:0}
+.entry h3{margin:0 0 4px;font-size:.9rem}.entry p{margin:2px 0;font-size:.92rem}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.row>*{flex:1;min-width:140px}
+a{color:var(--blue)}
+[hidden]{display:none!important}
+@media(prefers-reduced-motion:no-preference){.panel{transition:border-color .2s}.panel:focus-within{border-color:var(--blue)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Python Quest <span>Logbook</span></h1>
+  <p class="sub">Catat proses proyekmu, bukan hanya hasilnya. Setiap sesi satu catatan.</p>
+  <nav role="tablist" id="tabs">
+    <button role="tab" data-t="log" aria-selected="true">Log Sesi</button>
+    <button role="tab" data-t="ai" aria-selected="false">AI Checkpoint</button>
+    <button role="tab" data-t="mine" aria-selected="false">Riwayatku</button>
+    <button role="tab" data-t="dash" aria-selected="false">Dashboard Guru</button>
+  </nav>
+</header>
+<main>
+
+<section class="panel" id="who">
+  <div class="row">
+    <div><label for="kelas">Kelas</label><select id="kelas"></select></div>
+    <div style="flex:3"><label for="siswa">Nama lengkap</label><select id="siswa"><option value="">Memuat daftar siswa...</option></select></div>
+    <div style="max-width:120px;min-width:100px"><label for="absen">No. absen</label><input id="absen" readonly tabindex="-1"></div>
+  </div>
+  <p class="msg mono" id="mode" style="font-size:.75rem;color:var(--mute)"></p>
+</section>
+
+<!-- LOG SESI -->
+<section id="p-log">
+  <form class="panel" id="f-log">
+    <p class="flow">Think → Code → Test → Debug → Commit</p>
+    <div class="grid">
+      <div><label for="l-tgl">Tanggal</label><input id="l-tgl" type="date" required></div>
+      <div><label for="l-pert">Pertemuan ke-</label><input id="l-pert" type="number" min="1" required></div>
+      <div><label for="l-tahap">Tahap proyek</label>
+        <select id="l-tahap"><option>Memahami masalah</option><option>Merancang logika/algoritma</option><option>Menulis kode</option><option>Testing &amp; debugging</option><option>Dokumentasi GitHub</option><option>Finalisasi &amp; presentasi</option></select></div>
+    </div>
+    <label for="l-target">Target sesi ini</label><textarea id="l-target" required placeholder="Contoh: fungsi hitung_diskon berjalan untuk 3 kasus uji"></textarea>
+    <label for="l-kerja">Yang benar-benar kukerjakan</label><textarea id="l-kerja" required></textarea>
+    <label for="l-commit">Link commit/repository GitHub <small>(wajib, salin dari GitHub)</small></label>
+    <input id="l-commit" type="url" required placeholder="https://github.com/...">
+    <div class="grid">
+      <div><label for="l-err">Error yang kutemui <small>(tulis pesan errornya)</small></label><textarea id="l-err"></textarea></div>
+      <div><label for="l-sol">Cara aku menelusuri &amp; memperbaikinya</label><textarea id="l-sol"></textarea></div>
+    </div>
+    <div class="grid">
+      <div><label for="l-prog">Progres proyek: <b id="l-pv">0</b>%</label><input id="l-prog" type="range" min="0" max="100" step="5" value="0"></div>
+      <div><label for="l-stat">Status sesi</label><select id="l-stat"><option>Sesuai target</option><option>Terhambat</option><option>Selesai</option></select></div>
+    </div>
+    <label for="l-kend">Kendala yang masih ada</label><textarea id="l-kend"></textarea>
+    <label for="l-ren">Rencana sesi berikutnya</label><textarea id="l-ren"></textarea>
+    <button class="btn" type="submit">Simpan log sesi</button>
+    <p class="msg" id="m-log" role="status"></p>
+  </form>
+</section>
+
+<!-- AI CHECKPOINT -->
+<section id="p-ai" hidden>
+  <form class="panel" id="f-ai">
+    <div class="hint">Isi checkpoint ini setiap kali memakai AI. AI membantu kamu berpikir; AI tidak mengerjakan tugasmu. Urutannya: coba dulu, baru tanya.</div>
+    <label for="a-tgl">Tanggal</label><input id="a-tgl" type="date" required>
+    <label for="a-masalah">Masalah yang sedang kuhadapi</label><textarea id="a-masalah" required></textarea>
+    <label for="a-upaya">Upaya yang sudah kulakukan sebelum bertanya ke AI <small>(minimal 30 karakter)</small></label><textarea id="a-upaya" required minlength="30"></textarea>
+    <label for="a-prompt">Pertanyaan (prompt) yang kuberikan ke AI</label><textarea id="a-prompt" required></textarea>
+    <label for="a-saran">Ringkasan jawaban AI menurut bahasaku</label><textarea id="a-saran" required></textarea>
+    <div class="grid">
+      <div><label for="a-uji">Hasil pengujian saran AI</label><select id="a-uji"><option>Sudah diuji, berhasil</option><option>Sudah diuji, belum berhasil</option><option>Belum diuji</option></select></div>
+      <div><label for="a-porsi">Seberapa banyak kode AI yang kupakai</label><select id="a-porsi"><option>Hanya petunjuk/penjelasan</option><option>Sebagian, sudah kuubah</option><option>Sebagian besar kusalin</option></select></div>
+    </div>
+    <label for="a-jelas">Aku bisa menjelaskan ulang kode/solusinya begini</label><textarea id="a-jelas" required></textarea>
+    <label for="a-ref">Yang kupelajari dari proses ini</label><textarea id="a-ref"></textarea>
+    <button class="btn" type="submit">Simpan AI checkpoint</button>
+    <p class="msg" id="m-ai" role="status"></p>
+  </form>
+</section>
+
+<!-- RIWAYAT -->
+<section id="p-mine" hidden>
+  <div class="panel"><button class="btn alt" id="b-mine" style="margin:0">Muat ulang riwayat</button><div id="mine-out"></div></div>
+</section>
+
+<!-- DASHBOARD -->
+<section id="p-dash" hidden>
+  <div class="panel" id="gate">
+    <label for="pin">PIN guru</label>
+    <div class="row"><input id="pin" type="password" autocomplete="off"><button class="btn" id="b-pin" style="margin:0">Buka dashboard</button></div>
+    <p class="msg" id="m-pin" role="status"></p>
+  </div>
+  <div id="dash" hidden>
+    <div class="row" style="margin-bottom:14px">
+      <div><label for="d-kelas">Kelas</label><select id="d-kelas"></select></div>
+      <div><button class="btn alt" id="b-ref" style="margin:0">Muat ulang</button></div>
+      <div><button class="btn alt" id="b-csv" style="margin:0">Unduh CSV</button></div>
+      <div id="demo-box" hidden><button class="btn alt" id="b-demo" style="margin:0">Isi data contoh</button></div>
+    </div>
+    <div class="cards" id="cards"></div>
+    <div class="panel tw"><h3 style="margin-top:0">Rekap per siswa</h3><table id="tbl"></table></div>
+    <div class="panel" id="belum"></div>
+    <div class="panel" id="detail" hidden></div>
+  </div>
+</section>
+</main>
+
+<script>
+// ====== KONFIGURASI ======
+// Isi API_URL dengan alamat Web App Google Apps Script (lihat PANDUAN-PASANG.md).
+// Jika kosong, aplikasi berjalan dalam MODE DEMO (data tersimpan di browser ini saja).
+const CONFIG = {
+  API_URL: "https://script.google.com/macros/s/AKfycbwo2xjUO2iA55Z1_gUZQ3u-33JRbkqRg2KtK_ZMdmKn6f25_CbRCnMzYzNWCwz87sTSkw/exec",
+  // Daftar siswa diambil dari sheet "data" di Google Sheet. Di mode demo dipakai daftar contoh ini.
+  DEMO_ROSTER: {
+    "XI TKJ 1":[[1,"Ayu"],[2,"Bima"],[3,"Citra"],[4,"Dimas"],[9,"Indah"]].map(a=>({absen:a[0],nama:a[1]+" (contoh)"})),
+    "XI TKJ 2":[[5,"Eka"],[6,"Fajar"],[7,"Gita"],[8,"Hadi"],[10,"Joko"]].map(a=>({absen:a[0],nama:a[1]+" (contoh)"}))
+  },
+  DEMO_PIN: "diyah1029",
+  INAKTIF_HARI: 7
+};
+// =========================
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const DEMO = !CONFIG.API_URL;
+const LS = {get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}}, set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+// ---- lapisan data (Apps Script atau demo) ----
+const api = {
+  async submit(type, row){
+    row.ts = new Date().toISOString();
+    if(DEMO){ const db=LS.get("pq_db",{log:[],ai:[]}); db[type].push(row); LS.set("pq_db",db); return {ok:true}; }
+    const r = await fetch(CONFIG.API_URL,{method:"POST",body:JSON.stringify({type,row})});
+    return r.json();
+  },
+  async roster(){
+    if(DEMO) return {ok:true,roster:CONFIG.DEMO_ROSTER};
+    const r = await fetch(CONFIG.API_URL+"?action=roster"); return r.json();
+  },
+  async mine(kelas, absen){
+    if(DEMO){ const db=LS.get("pq_db",{log:[],ai:[]}); const f=x=>x.kelas===kelas&&String(x.absen)===String(absen); return {ok:true,log:db.log.filter(f),ai:db.ai.filter(f)}; }
+    const r = await fetch(CONFIG.API_URL+"?action=mine&kelas="+encodeURIComponent(kelas)+"&absen="+encodeURIComponent(absen));
+    return r.json();
+  },
+  async all(pin){
+    if(DEMO){ if(pin!==CONFIG.DEMO_PIN) return {ok:false}; const db=LS.get("pq_db",{log:[],ai:[]}); return {ok:true,...db}; }
+    const r = await fetch(CONFIG.API_URL+"?action=all&pin="+encodeURIComponent(pin));
+    return r.json();
+  }
+};
+
+// ---- init ----
+let ROSTER = {};
+const me = LS.get("pq_me",{});
+const namaSiswa = (k,a)=>((ROSTER[k]||[]).find(x=>String(x.absen)===String(a))||{}).nama;
+function isiSiswa(pilih){
+  const L = ROSTER[$("#kelas").value]||[];
+  $("#siswa").innerHTML = `<option value="">- pilih namamu -</option>` + L.map(x=>`<option value="${esc(x.absen)}">${esc(x.absen)}. ${esc(x.nama)}</option>`).join("");
+  $("#siswa").value = pilih||""; $("#absen").value = $("#siswa").value;
+}
+function simpanMe(){ LS.set("pq_me",{kelas:$("#kelas").value,absen:$("#siswa").value}); }
+$("#kelas").onchange = ()=>{ isiSiswa(); simpanMe(); if(!$("#p-mine").hidden) muatMine(); };
+$("#siswa").onchange = ()=>{ $("#absen").value=$("#siswa").value; simpanMe(); if(!$("#p-mine").hidden) muatMine(); };
+async function init(){
+  try{ const r=await api.roster(); ROSTER=r.roster||{}; }catch(e){}
+  const KL=Object.keys(ROSTER);
+  if(!KL.length){ $("#siswa").innerHTML=`<option value="">Daftar siswa belum termuat</option>`; $("#mode").textContent="Daftar siswa tidak ditemukan. Minta guru memeriksa sheet \"data\" (kolom Kelas, No Absen, Nama)."; $("#mode").className="msg mono bad"; return; }
+  $("#kelas").innerHTML = KL.map(k=>`<option>${esc(k)}</option>`).join("");
+  $("#d-kelas").innerHTML = `<option value="">Semua kelas</option>` + KL.map(k=>`<option>${esc(k)}</option>`).join("");
+  if(me.kelas&&ROSTER[me.kelas]) $("#kelas").value=me.kelas;
+  isiSiswa(namaSiswa($("#kelas").value,me.absen)?me.absen:"");
+}
+const today = new Date().toISOString().slice(0,10); $("#l-tgl").value=today; $("#a-tgl").value=today;
+$("#mode").textContent = DEMO ? "MODE DEMO: data hanya tersimpan di browser ini. Hubungkan ke Google Sheet agar data terkumpul untuk guru." : "Terhubung ke Google Sheet kelas.";
+$("#l-prog").oninput = e => $("#l-pv").textContent = e.target.value;
+
+function ident(){
+  const kelas=$("#kelas").value, absen=$("#siswa").value, nama=namaSiswa(kelas,absen);
+  return (absen&&nama) ? {kelas,absen,nama} : null;
+}
+
+// ---- tab ----
+document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("#tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
+  ["log","ai","mine","dash"].forEach(t=>$("#p-"+t).hidden = t!==b.dataset.t);
+  $("#who").hidden = b.dataset.t==="dash";
+  if(b.dataset.t==="mine") muatMine();
+});
+
+// ---- kirim form ----
+async function kirim(type, formId, msgId, build){
+  $(formId).addEventListener("submit", async e=>{
+    e.preventDefault();
+    const m=$(msgId), id=ident();
+    if(!id){ m.className="msg bad"; m.textContent="Pilih kelas dan namamu di bagian atas dulu."; return; }
+    const btn=e.submitter; btn.disabled=true; m.className="msg"; m.textContent="Menyimpan...";
+    try{
+      const res = await api.submit(type,{...id,...build()});
+      if(res.ok){ m.className="msg ok"; m.textContent="Tersimpan. Kerja bagus, lanjutkan di sesi berikutnya."; e.target.reset(); $("#l-tgl").value=today; $("#a-tgl").value=today; $("#l-pv").textContent="0"; }
+      else throw new Error(res.error||"gagal");
+    }catch(err){ m.className="msg bad"; m.textContent="Belum tersimpan ("+err.message+"). Cek koneksi lalu coba lagi; isianmu masih ada."; }
+    btn.disabled=false;
+  });
+}
+const v = id => $(id).value.trim();
+kirim("log","#f-log","#m-log",()=>({tanggal:v("#l-tgl"),pertemuan:v("#l-pert"),tahap:v("#l-tahap"),target:v("#l-target"),dikerjakan:v("#l-kerja"),commit:v("#l-commit"),error:v("#l-err"),solusi:v("#l-sol"),progres:Number(v("#l-prog")),status:v("#l-stat"),kendala:v("#l-kend"),rencana:v("#l-ren")}));
+kirim("ai","#f-ai","#m-ai",()=>({tanggal:v("#a-tgl"),masalah:v("#a-masalah"),upaya:v("#a-upaya"),prompt:v("#a-prompt"),saran:v("#a-saran"),diuji:v("#a-uji"),porsi:v("#a-porsi"),penjelasan:v("#a-jelas"),refleksi:v("#a-ref")}));
+
+// ---- riwayat siswa ----
+const link = u => /^https?:\/\//.test(u) ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a>` : esc(u);
+function renderLog(x){ return `<div class="entry"><h3>${esc(x.tanggal)} · Pertemuan ${esc(x.pertemuan)} · ${esc(x.tahap)}</h3>
+<p><b>Target:</b> ${esc(x.target)}</p><p><b>Dikerjakan:</b> ${esc(x.dikerjakan)}</p>${x.error?`<p><b>Error:</b> ${esc(x.error)} → ${esc(x.solusi)}</p>`:""}
+<p>${link(x.commit)}</p><p><span class="tag">${esc(x.progres)}%</span><span class="tag">${esc(x.status)}</span></p></div>`; }
+function renderAi(x){ return `<div class="entry"><h3>${esc(x.tanggal)} · AI Checkpoint</h3><p><b>Masalah:</b> ${esc(x.masalah)}</p><p><b>Upaya awal:</b> ${esc(x.upaya)}</p>
+<p><b>Penjelasanku:</b> ${esc(x.penjelasan)}</p><p><span class="tag ${x.diuji==="Belum diuji"?"w":"g"}">${esc(x.diuji)}</span><span class="tag ${x.porsi.startsWith("Sebagian besar")?"w":""}">${esc(x.porsi)}</span></p></div>`; }
+async function muatMine(){
+  const id=ident(), out=$("#mine-out");
+  if(!id){ out.innerHTML=`<p class="msg bad">Pilih kelas dan namamu di bagian atas dulu.</p>`; return; }
+  out.innerHTML="<p class='msg'>Memuat...</p>";
+  try{ const r=await api.mine(id.kelas,id.absen);
+    const L=[...(r.log||[])].sort((a,b)=>b.ts.localeCompare(a.ts)), A=[...(r.ai||[])].sort((a,b)=>b.ts.localeCompare(a.ts));
+    out.innerHTML = `<h3>Riwayat ${esc(id.nama)} (${esc(id.kelas)}, no. ${esc(id.absen)})</h3><h3>Log sesi (${L.length})</h3>${L.map(renderLog).join("")||"<p class='msg'>Belum ada log sesi.</p>"}<h3>AI checkpoint (${A.length})</h3>${A.map(renderAi).join("")||"<p class='msg'>Belum ada checkpoint.</p>"}`;
+  }catch(e){ out.innerHTML="<p class='msg bad'>Gagal memuat. Coba lagi.</p>"; }
+}
+$("#b-mine").onclick = muatMine;
+
+// ---- dashboard guru ----
+let DATA=null;
+async function muat(pin){
+  const r = await api.all(pin); if(!r.ok) throw new Error("PIN salah atau data tidak dapat dimuat");
+  DATA={log:r.log||[],ai:r.ai||[]}; sessionStorage.setItem("pq_pin",pin); renderDash();
+}
+$("#b-pin").onclick = async ()=>{
+  const m=$("#m-pin"); m.className="msg"; m.textContent="Memeriksa...";
+  try{ await muat($("#pin").value); $("#gate").hidden=true; $("#dash").hidden=false; $("#demo-box").hidden=!DEMO; m.textContent=""; }
+  catch(e){ m.className="msg bad"; m.textContent=e.message; }
+};
+$("#b-ref").onclick = ()=>muat(sessionStorage.getItem("pq_pin")||"").catch(e=>alert(e.message));
+$("#d-kelas").onchange = ()=>renderDash();
+
+function rekap(){
+  const kf=$("#d-kelas").value, map={};
+  const add=(x,t)=>{ if(kf&&x.kelas!==kf) return; const k=x.kelas+"|"+x.absen; const s=map[k]??={kelas:x.kelas,absen:Number(x.absen),nama:x.nama,log:[],ai:[]}; s[t].push(x); s.nama=x.nama; };
+  DATA.log.forEach(x=>add(x,"log")); DATA.ai.forEach(x=>add(x,"ai"));
+  return Object.values(map).map(s=>{
+    s.log.sort((a,b)=>a.ts.localeCompare(b.ts)); s.ai.sort((a,b)=>a.ts.localeCompare(b.ts));
+    const last=s.log.at(-1), lastAny=[...s.log,...s.ai].map(x=>x.ts).sort().at(-1);
+    s.progres=last?Number(last.progres):0; s.terakhir=lastAny; s.hari=Math.floor((Date.now()-new Date(lastAny))/864e5);
+    s.flag=[]; if(s.hari>=CONFIG.INAKTIF_HARI) s.flag.push("Tidak aktif "+s.hari+" hari");
+    if(last&&last.status==="Terhambat") s.flag.push("Terhambat");
+    if(s.log.some(x=>!/^https?:\/\/(www\.)?github\.com\//.test(x.commit||""))) s.flag.push("Link bukan GitHub");
+    if(s.ai.some(x=>x.diuji==="Belum diuji")) s.flag.push("Saran AI belum diuji");
+    if(s.ai.filter(x=>x.porsi.startsWith("Sebagian besar")).length>=2) s.flag.push("Sering menyalin kode AI");
+    if(s.log.length&&!s.ai.length) s.flag.push("Belum ada AI checkpoint");
+    return s;
+  }).sort((a,b)=>a.kelas.localeCompare(b.kelas)||a.absen-b.absen);
+}
+function renderDash(){
+  const R=rekap(), kf=$("#d-kelas").value;
+  const total = Object.entries(ROSTER).filter(([k])=>!kf||k===kf).reduce((a,[,L])=>a+L.length,0);
+  const avg = R.length?Math.round(R.reduce((a,s)=>a+s.progres,0)/R.length):0;
+  const perhatian = R.filter(s=>s.flag.length).length;
+  $("#cards").innerHTML = [[R.length+"/"+total,"siswa sudah mengisi"],[avg+"%","rata-rata progres"],[R.reduce((a,s)=>a+s.log.length,0),"log sesi"],[R.reduce((a,s)=>a+s.ai.length,0),"AI checkpoint"],[perhatian,"perlu perhatian"]].map(c=>`<div class="card"><b>${esc(c[0])}</b><span>${esc(c[1])}</span></div>`).join("");
+  $("#tbl").innerHTML = `<tr><th>Kelas</th><th>No</th><th>Nama</th><th>Progres</th><th>Log</th><th>AI</th><th>Terakhir</th><th>Catatan</th></tr>` + (R.map((s,i)=>`<tr data-i="${i}" style="cursor:pointer"><td>${esc(s.kelas)}</td><td>${s.absen}</td><td>${esc(s.nama)}</td><td><div class="bar"><i style="width:${s.progres}%"></i></div>${s.progres}%</td><td>${s.log.length}</td><td>${s.ai.length}</td><td>${esc(s.terakhir.slice(0,10))}</td><td>${s.flag.map(f=>`<span class="tag w">${esc(f)}</span>`).join("")||`<span class="tag g">lancar</span>`}</td></tr>`).join("")||`<tr><td colspan="8">Belum ada data. Minta siswa mengisi log sesi pertama.</td></tr>`);
+  const sudah=new Set(R.map(s=>s.kelas+"|"+s.absen)), B=[];
+  Object.entries(ROSTER).forEach(([k,L])=>{ if(kf&&k!==kf) return; L.forEach(x=>{ if(!sudah.has(k+"|"+x.absen)) B.push(k+" · "+x.absen+". "+x.nama); }); });
+  $("#belum").innerHTML = `<h3 style="margin-top:0">Belum mengisi (${B.length})</h3>` + (B.length?`<p>${B.map(esc).join("<br>")}</p>`:`<p class="msg ok">Semua siswa sudah mengisi.</p>`);
+  $("#tbl").querySelectorAll("tr[data-i]").forEach(tr=>tr.onclick=()=>{ const s=R[tr.dataset.i], d=$("#detail"); d.hidden=false;
+    d.innerHTML=`<h3 style="margin-top:0">${esc(s.nama)} · ${esc(s.kelas)} no. ${s.absen}</h3><h3>Log sesi</h3>${[...s.log].reverse().map(renderLog).join("")||"<p class='msg'>Belum ada.</p>"}<h3>AI checkpoint</h3>${[...s.ai].reverse().map(renderAi).join("")||"<p class='msg'>Belum ada.</p>"}`; d.scrollIntoView({behavior:"smooth"}); });
+}
+$("#b-csv").onclick = ()=>{
+  const R=rekap(), q=s=>'"'+String(s).replace(/"/g,'""')+'"';
+  const rows=[["Kelas","No","Nama","Progres","Jumlah log","Jumlah AI checkpoint","Terakhir aktif","Catatan"],...R.map(s=>[s.kelas,s.absen,s.nama,s.progres,s.log.length,s.ai.length,s.terakhir.slice(0,10),s.flag.join("; ")])];
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["\ufeff"+rows.map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv"})); a.download="rekap-python-quest.csv"; a.click();
+};
+$("#b-demo").onclick = async ()=>{
+  const nm=["Ayu","Bima","Citra","Dimas","Eka","Fajar","Gita","Hadi"], db={log:[],ai:[]}, d=n=>new Date(Date.now()-n*864e5).toISOString();
+  nm.forEach((n,i)=>{ const k=i<4?"XI TKJ 1":"XI TKJ 2";
+    for(let j=0;j<=(i%4)+1;j++) db.log.push({ts:d(12-j*3-(i===3?6:0)),kelas:k,absen:i+1,nama:n+" (contoh)",tanggal:d(12-j*3).slice(0,10),pertemuan:10+j,tahap:"Menulis kode",target:"Contoh target",dikerjakan:"Contoh pekerjaan",commit:i===5?"https://example.com/x":"https://github.com/contoh/proyek",error:"NameError",solusi:"Cek nama variabel",progres:Math.min(100,15+j*25+i*3),status:i===2?"Terhambat":"Sesuai target",kendala:"",rencana:""});
+    if(i%3!==0) db.ai.push({ts:d(5-(i%3)),kelas:k,absen:i+1,nama:n+" (contoh)",tanggal:d(5).slice(0,10),masalah:"Contoh masalah",upaya:"Sudah mencoba membaca error dan print variabel",prompt:"",saran:"",diuji:i===4?"Belum diuji":"Sudah diuji, berhasil",porsi:i===6?"Sebagian besar kusalin":"Hanya petunjuk/penjelasan",penjelasan:"Contoh penjelasan",refleksi:""}); });
+  LS.set("pq_db",db); await muat(sessionStorage.getItem("pq_pin"));
+};
+init();
+</script>
+</body>
+</html>
