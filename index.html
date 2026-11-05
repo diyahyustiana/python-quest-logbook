@@ -45,6 +45,11 @@ th{color:var(--mute);font-size:.75rem;font-weight:600}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.row>*{flex:1;min-width:140px}
 a{color:var(--blue)}
 [hidden]{display:none!important}
+.ph{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}.ph h3{margin:0}
+.btn.sm{margin:0;padding:6px 12px;font-size:.8rem}
+.dual{display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,1.6fr);gap:16px;align-items:start;margin-bottom:16px}
+.dual .panel{margin-bottom:0}.scroll{max-height:75vh;overflow:auto}
+@media(max-width:800px){.dual{grid-template-columns:1fr}.scroll{max-height:none}}
 #print-area{display:none}
 @media print{
   body{background:#fff}
@@ -57,6 +62,9 @@ a{color:var(--blue)}
   #print-area .isi th{width:32%;background:#eee;font-family:inherit;font-weight:600}
   #print-area .isi td{white-space:pre-wrap;word-break:break-word}
   #print-area .ft{font-size:9pt;color:#444}
+  #print-area .rek th,#print-area .rek td{border:1px solid #888;padding:4px 6px;font-size:9pt;color:#000;text-align:left}
+  #print-area .rek th{background:#eee;font-family:inherit;font-weight:600}
+  #print-area .rek{page-break-inside:auto}#print-area .rek tr{page-break-inside:avoid}
 }
 @media(prefers-reduced-motion:no-preference){.panel{transition:border-color .2s}.panel:focus-within{border-color:var(--blue)}}
 </style>
@@ -159,13 +167,20 @@ a{color:var(--blue)}
     <div class="row" style="margin-bottom:14px">
       <div><label for="d-kelas">Kelas</label><select id="d-kelas"></select></div>
       <div><button class="btn alt" id="b-ref" style="margin:0">Muat ulang</button></div>
-      <div><button class="btn alt" id="b-csv" style="margin:0">Unduh CSV</button></div>
       <div id="demo-box" hidden><button class="btn alt" id="b-demo" style="margin:0">Isi data contoh</button></div>
     </div>
     <div class="cards" id="cards"></div>
-    <div class="panel tw"><h3 style="margin-top:0">Rekap per siswa</h3><table id="tbl"></table></div>
-    <div class="panel" id="belum"></div>
-    <div class="panel" id="detail" hidden></div>
+    <div class="panel tw">
+      <div class="ph"><h3>Rekap per siswa</h3><button class="btn alt sm" id="b-p-rekap">Cetak PDF</button></div>
+      <table id="tbl"></table>
+    </div>
+    <div class="dual">
+      <div class="panel scroll">
+        <div class="ph"><h3>Belum mengisi (<span id="n-belum">0</span>)</h3><button class="btn alt sm" id="b-p-belum">Cetak PDF</button></div>
+        <div id="belum"></div>
+      </div>
+      <div class="panel scroll" id="detail"></div>
+    </div>
   </div>
 </section>
 </main>
@@ -176,7 +191,7 @@ a{color:var(--blue)}
 // Isi API_URL dengan alamat Web App Google Apps Script (lihat PANDUAN-PASANG.md).
 // Jika kosong, aplikasi berjalan dalam MODE DEMO (data tersimpan di browser ini saja).
 const CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbzTAn5fh3uT5mxv7KvuzFXirDVfaFq76niHc0PAZ2gGIIMT8qisCXszTWkH45lp0wfeTw/exec",
+  API_URL: "",
   // Daftar siswa diambil dari sheet "data" di Google Sheet. Di mode demo dipakai daftar contoh ini.
   DEMO_ROSTER: {
     "XI TKJ 1":[[1,"Ayu"],[2,"Bima"],[3,"Citra"],[4,"Dimas"],[9,"Indah"]].map(a=>({absen:a[0],nama:a[1]+" (contoh)"})),
@@ -379,15 +394,33 @@ function renderDash(){
   $("#cards").innerHTML = [[R.length+"/"+total,"siswa sudah mengisi"],[avg+"%","rata-rata progres"],[R.reduce((a,s)=>a+s.log.length,0),"log sesi"],[R.reduce((a,s)=>a+s.ai.length,0),"AI checkpoint"],[perhatian,"perlu perhatian"]].map(c=>`<div class="card"><b>${esc(c[0])}</b><span>${esc(c[1])}</span></div>`).join("");
   $("#tbl").innerHTML = `<tr><th>Kelas</th><th>No</th><th>Nama</th><th>Progres</th><th>Log</th><th>AI</th><th>Terakhir</th><th>Catatan</th></tr>` + (R.map((s,i)=>`<tr data-i="${i}" style="cursor:pointer"><td>${esc(s.kelas)}</td><td>${s.absen}</td><td>${esc(s.nama)}</td><td><div class="bar"><i style="width:${s.progres}%"></i></div>${s.progres}%</td><td>${s.log.length}</td><td>${s.ai.length}</td><td>${esc(s.terakhir.slice(0,10))}</td><td>${s.flag.map(f=>`<span class="tag w">${esc(f)}</span>`).join("")||`<span class="tag g">lancar</span>`}</td></tr>`).join("")||`<tr><td colspan="8">Belum ada data. Minta siswa mengisi log sesi pertama.</td></tr>`);
   const sudah=new Set(R.map(s=>key(s.kelas,s.absen,s.nama))), B=[];
-  Object.entries(ROSTER).forEach(([k,L])=>{ if(kf&&k!==kf) return; L.forEach(x=>{ if(!sudah.has(key(k,x.absen,x.nama))) B.push(k+" · "+x.absen+". "+x.nama); }); });
-  $("#belum").innerHTML = `<h3 style="margin-top:0">Belum mengisi (${B.length})</h3>` + (B.length?`<p>${B.map(esc).join("<br>")}</p>`:`<p class="msg ok">Semua siswa sudah mengisi.</p>`);
-  $("#tbl").querySelectorAll("tr[data-i]").forEach(tr=>tr.onclick=()=>{ const s=R[tr.dataset.i], d=$("#detail"); d.hidden=false;
-    d.innerHTML=`<h3 style="margin-top:0">${esc(s.nama)} · ${esc(s.kelas)} no. ${s.absen}</h3><h3>Log sesi</h3>${[...s.log].reverse().map(x=>renderLog(x)).join("")||"<p class='msg'>Belum ada.</p>"}<h3>AI checkpoint</h3>${[...s.ai].reverse().map(x=>renderAi(x)).join("")||"<p class='msg'>Belum ada.</p>"}`; d.scrollIntoView({behavior:"smooth"}); });
+  Object.entries(ROSTER).forEach(([k,L])=>{ if(kf&&k!==kf) return; L.forEach(x=>{ if(!sudah.has(key(k,x.absen,x.nama))) B.push({k,absen:x.absen,nama:x.nama}); }); });
+  LAST={R,B,kf};
+  $("#n-belum").textContent = B.length;
+  $("#belum").innerHTML = B.length ? `<p>${B.map(x=>esc(x.k+" · "+x.absen+". "+x.nama)).join("<br>")}</p>` : `<p class="msg ok">Semua siswa sudah mengisi.</p>`;
+  $("#detail").innerHTML = DETAIL_KOSONG;
+  $("#tbl").querySelectorAll("tr[data-i]").forEach(tr=>tr.onclick=()=>{ const s=R[tr.dataset.i], d=$("#detail");
+    d.innerHTML=`<h3 style="margin-top:0">${esc(s.nama)} · ${esc(s.kelas)} no. ${s.absen}</h3><h3>Log sesi</h3>${[...s.log].reverse().map(x=>renderLog(x)).join("")||"<p class='msg'>Belum ada.</p>"}<h3>AI checkpoint</h3>${[...s.ai].reverse().map(x=>renderAi(x)).join("")||"<p class='msg'>Belum ada.</p>"}`;
+    d.scrollTop=0; if(window.innerWidth<=800) d.scrollIntoView({behavior:"smooth"}); });
 }
-$("#b-csv").onclick = ()=>{
-  const R=rekap(), q=s=>'"'+String(s).replace(/"/g,'""')+'"';
-  const rows=[["Kelas","No","Nama","Progres","Jumlah log","Jumlah AI checkpoint","Terakhir aktif","Catatan"],...R.map(s=>[s.kelas,s.absen,s.nama,s.progres,s.log.length,s.ai.length,s.terakhir.slice(0,10),s.flag.join("; ")])];
-  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["\ufeff"+rows.map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv"})); a.download="rekap-python-quest.csv"; a.click();
+let LAST={R:[],B:[],kf:""};
+const DETAIL_KOSONG = `<h3 style="margin-top:0">Rincian riwayat siswa</h3><p class="msg">Klik nama siswa pada tabel rekap untuk melihat rincian log sesi dan AI checkpoint-nya di sini.</p>`;
+function cetakHtml(judul, html){
+  $("#print-area").innerHTML = html;
+  const lama=document.title; document.title=judul;
+  window.addEventListener("afterprint",()=>{ document.title=lama; $("#print-area").innerHTML=""; },{once:true});
+  window.print();
+}
+const infoCetak = kf => `<p class="ft">Kelas: ${esc(kf||"Semua kelas")} · Dicetak: ${esc(new Date().toLocaleString("id-ID"))}</p>`;
+$("#b-p-rekap").onclick = ()=>{
+  const {R,kf}=LAST; if(!R.length){ alert("Belum ada data rekap untuk dicetak."); return; }
+  cetakHtml(`Rekap per siswa - ${kf||"Semua kelas"} - ${new Date().toISOString().slice(0,10)}`,
+    `<h2>Python Quest Logbook - Rekap per Siswa</h2>${infoCetak(kf)}<table class="rek"><tr><th>Kelas</th><th>No</th><th>Nama</th><th>Progres</th><th>Log</th><th>AI</th><th>Terakhir</th><th>Catatan</th></tr>${R.map(s=>`<tr><td>${esc(s.kelas)}</td><td>${s.absen}</td><td>${esc(s.nama)}</td><td>${s.progres}%</td><td>${s.log.length}</td><td>${s.ai.length}</td><td>${esc(s.terakhir.slice(0,10))}</td><td>${esc(s.flag.join("; ")||"lancar")}</td></tr>`).join("")}</table>`);
+};
+$("#b-p-belum").onclick = ()=>{
+  const {B,kf}=LAST; if(!B.length){ alert("Semua siswa sudah mengisi, tidak ada daftar untuk dicetak."); return; }
+  cetakHtml(`Belum mengisi - ${kf||"Semua kelas"} - ${new Date().toISOString().slice(0,10)}`,
+    `<h2>Python Quest Logbook - Belum Mengisi (${B.length} siswa)</h2>${infoCetak(kf)}<table class="rek"><tr><th>No</th><th>Kelas</th><th>No. absen</th><th>Nama</th></tr>${B.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.k)}</td><td>${esc(x.absen)}</td><td>${esc(x.nama)}</td></tr>`).join("")}</table>`);
 };
 $("#b-demo").onclick = async ()=>{
   const nm=["Ayu","Bima","Citra","Dimas","Eka","Fajar","Gita","Hadi"], db={log:[],ai:[]}, d=n=>new Date(Date.now()-n*864e5).toISOString();
